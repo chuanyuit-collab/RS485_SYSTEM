@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧管理平台</title>
+    <link rel="stylesheet" href="/static/styles.css?v=2">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="app" class="container">
+        <header>
+            <h1>智慧管理平台</h1>
+            <nav>
+                <a href="/" class="nav-link" style="color: var(--text-primary); background: rgba(255,255,255,0.05);">儀表板</a>
+                <a href="/settings" class="nav-link">系統設定</a>
+            </nav>
+        </header>
+
+        <main>
+            <div v-if="loading" style="text-align: center; color: var(--text-secondary);">
+                載入中...
+            </div>
+            
+            <div v-else>
+                <div class="system-status-bar card" style="display: flex; justify-content: space-between; margin-bottom: 2rem; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div class="status-item" style="text-align: center;">
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">系統時間</div>
+                        <div style="font-size: 1.2rem; font-weight: 600; color: var(--accent-color);">{{ systemStatus.time }}</div>
+                    </div>
+                    <div class="status-item" style="text-align: center;">
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">MCU 溫度</div>
+                        <div style="font-size: 1.2rem; font-weight: 600; color: var(--accent-color);">{{ systemStatus.temperature }}</div>
+                    </div>
+                    <div class="status-item" style="text-align: center;">
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">CPU 使用率</div>
+                        <div style="font-size: 1.2rem; font-weight: 600; color: var(--accent-color);">{{ systemStatus.cpu_usage }}</div>
+                    </div>
+                    <div class="status-item" style="text-align: center;">
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">儲存空間</div>
+                        <div style="font-size: 1.2rem; font-weight: 600; color: var(--accent-color);">{{ systemStatus.storage }}</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <template v-for="group in activeGroups" :key="group.id">
+                    <div v-for="dev in group.devices" :key="dev.id" class="card device-card" @click="openChart(dev.id, group.name)">
+                        <div class="device-header">
+                            <h3>{{ group.name }} (ID: {{ dev.slave_id }})</h3>
+                            <div>
+                                <span class="status-indicator" :class="dev.is_online ? 'status-online' : 'status-offline'"></span>
+                                <span :style="{ fontSize: '0.8rem', color: dev.is_online ? 'var(--text-secondary)' : 'var(--danger-color)', fontWeight: dev.is_online ? 'normal' : '600' }">
+                                    {{ dev.is_online ? '上線' : '通訊異常 (Timeout)' }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <template v-if="dev.value !== null && isJson(dev.value)">
+                            <div class="json-grid">
+                                <div v-for="(v, k) in parseJson(dev.value)" :key="k" class="json-item">
+                                    <span class="json-key">{{ k }}</span>
+                                    <span class="json-val">{{ v }}</span>
+                                </div>
+                            </div>
+                        </template>
+                        <div class="value-display" v-else>
+                            {{ dev.value !== null ? dev.value : '--' }}
+                        </div>
+                        
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                            指令: {{ group.command }}<br>
+                            暫存器位址: {{ dev.register_address }}
+                        </div>
+                    </div>
+                </template>
+                </div>
+            </div>
+        </main>
+
+        <!-- Chart Modal -->
+        <div v-if="showModal" class="modal-overlay" @click.self="closeChart">
+            <div class="card modal-content" style="background: var(--bg-color);">
+                <button class="close-btn" @click="closeChart">&times;</button>
+                <h2 style="margin-bottom: 1.5rem;">歷史趨勢 - {{ selectedDeviceName }}</h2>
+                
+                <div style="height: 300px; margin-bottom: 2rem;">
+                    <canvas id="historyChart"></canvas>
+                </div>
+                
+                <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                    <a :href="'/api/history/download/' + selectedDeviceId" class="btn" style="text-decoration: none; display: inline-block;">
+                        下載 CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted, onUnmounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const groups = ref([]);
+                const systemStatus = ref({ time: '--', temperature: '--', cpu_usage: '--', storage: '--' });
+                
+                const isJson = (val) => {
+                    if (typeof val !== 'string') return false;
+                    try {
+                        const obj = JSON.parse(val);
+                        return typeof obj === 'object' && obj !== null;
+                    } catch (e) {
+                        return false;
+                    }
+                };
+
+                const parseJson = (val) => {
+                    try {
+                        return JSON.parse(val);
+                    } catch (e) {
+                        return {};
+                    }
+                };
+                const loading = ref(true);
+                const showModal = ref(false);
+                const selectedDeviceId = ref(null);
+                const selectedDeviceName = ref('');
+                let chartInstance = null;
+                let pollInterval = null;
+
+                const fetchSystemStatus = async () => {
+                    try {
+                        const res = await fetch('/api/system_status');
+                        systemStatus.value = await res.json();
+                    } catch (e) {
+                        console.error(e);
+                    }
+                };
+
+                const fetchGroups = async () => {
+                    try {
+                        const res = await fetch('/api/rs485_groups');
+                        const data = await res.json();
+                        
+                        // We also need to fetch latest values.
+                        // For demo purposes, we will fetch history limit 1 to get latest value for each device.
+                        for (let g of data) {
+                            for (let d of g.devices) {
+                                const hRes = await fetch(`/api/history/${d.id}`);
+                                const hData = await hRes.json();
+                                if (hData.length > 0) {
+                                    d.value = hData[hData.length - 1].value;
+                                    const lastUpdateStr = hData[hData.length - 1].timestamp;
+                                    const sysTimeStr = systemStatus.value.time;
+                                    
+                                    if (sysTimeStr !== '--') {
+                                        const sysTime = new Date(sysTimeStr.replace(' ', 'T'));
+                                        const lastUpdate = new Date(lastUpdateStr.replace(' ', 'T'));
+                                        const diffMs = sysTime - lastUpdate;
+                                        // Timeout if last update is older than 30 seconds
+                                        d.is_online = diffMs <= 30000;
+                                    } else {
+                                        d.is_online = true; // Fallback if system time isn't loaded yet
+                                    }
+                                } else {
+                                    d.value = null;
+                                    d.is_online = false;
+                                }
+                            }
+                        }
+                        
+                        groups.value = data;
+                        loading.value = false;
+                    } catch (e) {
+                        console.error(e);
+                    }
+                };
+
+                const openChart = async (deviceId, groupName) => {
+                    selectedDeviceId.value = deviceId;
+                    selectedDeviceName.value = groupName;
+                    showModal.value = true;
+                    
+                    await nextTick(); // Wait for canvas to render
+                    
+                    try {
+                        const res = await fetch(`/api/history/${deviceId}`);
+                        const data = await res.json();
+                        
+                        const labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
+                        const values = data.map(d => d.value);
+                        
+                        const ctx = document.getElementById('historyChart').getContext('2d');
+                        if (chartInstance) chartInstance.destroy();
+                        
+                        chartInstance = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: '讀取值',
+                                    data: values,
+                                    borderColor: '#38bdf8',
+                                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                                    borderWidth: 2,
+                                    fill: true,
+                                    tension: 0.4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false }
+                                },
+                                scales: {
+                                    y: {
+                                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                                        ticks: { color: '#94a3b8' }
+                                    },
+                                    x: {
+                                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                                        ticks: { color: '#94a3b8' }
+                                    }
+                                }
+                            }
+                        });
+                    } catch (e) {
+                        console.error(e);
+                    }
+                };
+
+                const closeChart = () => {
+                    showModal.value = false;
+                    if (chartInstance) {
+                        chartInstance.destroy();
+                        chartInstance = null;
+                    }
+                };
+
+                onMounted(() => {
+                    fetchGroups();
+                    fetchSystemStatus();
+                    // Poll every 5 seconds for updates
+                    pollInterval = setInterval(() => {
+                        fetchGroups();
+                        fetchSystemStatus();
+                    }, 5000);
+                });
+
+                onUnmounted(() => {
+                    clearInterval(pollInterval);
+                });
+
+                return {
+                    groups, systemStatus, activeGroups: Vue.computed(() => groups.value.filter(g => g.is_enabled !== false && g.is_enabled !== 0)), loading, showModal,
+                    selectedDeviceId, selectedDeviceName,
+                    openChart, closeChart,
+                    isJson, parseJson
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pymodbus
+paho-mqtt
+requests
+pyserial
+APScheduler
+psutil
