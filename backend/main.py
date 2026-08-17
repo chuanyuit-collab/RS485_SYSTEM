@@ -36,10 +36,45 @@ def get_polling_interval():
 def scheduled_job():
     poll_devices()
 
+def check_and_reconnect_wifi():
+    import platform, subprocess, time
+    if platform.system() == "Windows":
+        return
+    # Wait a few seconds to let NetworkManager settle
+    time.sleep(5)
+    try:
+        res = subprocess.check_output(['nmcli', '-t', '-f', 'ACTIVE', 'dev', 'wifi'], text=True)
+        if 'yes' in res:
+            return # Already connected
+            
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT ssid, password FROM wifi_profiles WHERE is_auto_reconnect=1 ORDER BY last_connected_at DESC")
+        profiles = cursor.fetchall()
+        conn.close()
+        
+        for p in profiles:
+            try:
+                if p['password']:
+                    subprocess.run(['nmcli', 'dev', 'wifi', 'connect', p['ssid'], 'password', p['password']], timeout=15, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                else:
+                    subprocess.run(['nmcli', 'dev', 'wifi', 'connect', p['ssid']], timeout=15, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                res2 = subprocess.check_output(['nmcli', '-t', '-f', 'ACTIVE', 'dev', 'wifi'], text=True)
+                if 'yes' in res2:
+                    break
+            except:
+                pass
+    except:
+        pass
+
 # Initialize database on startup
 @app.on_event("startup")
 def startup_event():
     init_db()
+    
+    import threading
+    threading.Thread(target=check_and_reconnect_wifi, daemon=True).start()
     
     # Try to send boot notification if enabled
     try:
@@ -94,6 +129,9 @@ async def read_settings(request: Request):
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+class SaveConfigReq(BaseModel):
+    name: str
 
 @app.post("/api/login")
 def login(req: LoginRequest, request: Request):
@@ -174,6 +212,7 @@ class SystemSettingsUpdate(BaseModel):
     mqtt_upload_change_percent: float
     mqtt_upload_on_timer: bool
     mqtt_upload_interval: int
+    mqtt_use_mac_prefix: bool
 
 @app.post("/api/system_settings")
 def update_system_settings(settings: SystemSettingsUpdate, request: Request):
@@ -186,13 +225,13 @@ def update_system_settings(settings: SystemSettingsUpdate, request: Request):
             mqtt_enabled=?, mqtt_host=?, mqtt_port=?, mqtt_user=?, mqtt_pass=?, mqtt_topic=?,
             telegram_enabled=?, telegram_boot_notify=?, telegram_token=?, telegram_chat_id=?,
             polling_interval=?, serial_port=?, simulation_mode=?,
-            mqtt_upload_on_change=?, mqtt_upload_change_percent=?, mqtt_upload_on_timer=?, mqtt_upload_interval=?
+            mqtt_upload_on_change=?, mqtt_upload_change_percent=?, mqtt_upload_on_timer=?, mqtt_upload_interval=?, mqtt_use_mac_prefix=?
         WHERE id=1
     ''', (
         settings.mqtt_enabled, settings.mqtt_host, settings.mqtt_port, settings.mqtt_user, settings.mqtt_pass, settings.mqtt_topic,
         settings.telegram_enabled, settings.telegram_boot_notify, settings.telegram_token, settings.telegram_chat_id,
         settings.polling_interval, settings.serial_port, settings.simulation_mode,
-        settings.mqtt_upload_on_change, settings.mqtt_upload_change_percent, settings.mqtt_upload_on_timer, settings.mqtt_upload_interval
+        settings.mqtt_upload_on_change, settings.mqtt_upload_change_percent, settings.mqtt_upload_on_timer, settings.mqtt_upload_interval, settings.mqtt_use_mac_prefix
     ))
     conn.commit()
     conn.close()
@@ -291,17 +330,37 @@ def test_connection(req: TestConnectionRequest, request: Request):
             
             # Use TLS for secure ports
             if settings.mqtt_port in [8883, 8884]:
-                client.tls_set(tls_version=ssl.PROTOCOL_TLS)
+                import certifi
+                client.tls_set(ca_certs=certifi.where(), tls_version=ssl.PROTOCOL_TLS)
             
             # Simple synchronous connect to test
             client.connect(settings.mqtt_host, settings.mqtt_port, 5)
             client.loop_start()
             
+            # Wait for CONNACK and TLS handshake to complete
+            time.sleep(1)
+            
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             payload = f'{{"status": "test_ok", "time": "{timestamp}"}}'
-            msg_info = client.publish(settings.mqtt_topic + "/test", payload)
-            msg_info.wait_for_publish(timeout=2)
             
+            import uuid
+            
+            base_topic = settings.mqtt_topic
+            if settings.mqtt_use_mac_prefix:
+                mac = hex(uuid.getnode())[2:].upper()
+                if base_topic:
+                    base_topic = f"{mac}/{base_topic}"
+                else:
+                    base_topic = mac
+            
+            topic = (base_topic + "/test") if base_topic else "test"
+            if topic.startswith("/"):
+                topic = topic[1:] # avoid empty level
+                
+            msg_info = client.publish(topic, payload, qos=1)
+            msg_info.wait_for_publish(timeout=3)
+            
+            time.sleep(0.5) # Allow network buffers to flush
             client.disconnect()
             client.loop_stop()
             return {"status": "success", "message": "MQTT connected and test message sent."}
@@ -370,7 +429,46 @@ def update_rs485_group(group: GroupUpdate, request: Request):
     conn.close()
     return {"status": "success"}
 
-# API to scan Wi-Fi
+# --- Advanced Wi-Fi Management ---
+@app.get("/api/wifi/status")
+def get_wifi_status():
+    import platform
+    if platform.system() == "Windows":
+        return {
+            "ssid": "Mock_Windows_Network",
+            "signal": "80%",
+            "ip": "192.168.0.100",
+            "interface": "wlan0"
+        }
+    else:
+        try:
+            # Check current connection using nmcli
+            res = subprocess.check_output(['nmcli', '-t', '-f', 'ACTIVE,SSID,SIGNAL,DEVICE', 'dev', 'wifi'], text=True)
+            for line in res.strip().split('\n'):
+                if line.startswith('yes:'):
+                    parts = line.split(':')
+                    if len(parts) >= 4:
+                        ssid = parts[1].strip()
+                        signal = parts[2].strip() + "%"
+                        device = parts[3].strip()
+                        
+                        # Get IP
+                        ip_res = subprocess.check_output(['ip', '-4', 'addr', 'show', device], text=True)
+                        ip = "N/A"
+                        for ip_line in ip_res.split('\n'):
+                            if "inet " in ip_line:
+                                ip = ip_line.split()[1].split('/')[0]
+                                break
+                        return {
+                            "ssid": ssid,
+                            "signal": signal,
+                            "ip": ip,
+                            "interface": device
+                        }
+            return {"ssid": "", "signal": "", "ip": "", "interface": ""}
+        except Exception as e:
+            return {"error": str(e)}
+
 @app.get("/api/wifi/scan")
 def scan_wifi():
     import platform
@@ -382,31 +480,155 @@ def scan_wifi():
                 if "SSID" in line and ":" in line:
                     ssid = line.split(":", 1)[1].strip()
                     if ssid:
-                        ssids.append({"ssid": ssid, "signal": "N/A"})
+                        ssids.append({"ssid": ssid, "signal": "N/A", "security": "WPA2"})
             return ssids
         except:
-            return [{"ssid": "Mock_WiFi_1", "signal": "80%"}, {"ssid": "Mock_WiFi_2", "signal": "60%"}]
+            return [{"ssid": "Mock_WiFi_1", "signal": "80%", "security": "WPA2"}, {"ssid": "Mock_WiFi_2", "signal": "60%", "security": "WPA3"}]
     else:
         try:
-            # Try to force rescan if possible (might fail without sudo, but we try anyway)
             try:
                 subprocess.run(['nmcli', 'dev', 'wifi', 'rescan'], timeout=5)
             except:
                 pass
-
-            res = subprocess.check_output(['nmcli', '-t', '-f', 'SSID,SIGNAL', 'dev', 'wifi'], text=True)
+            res = subprocess.check_output(['nmcli', '-t', '-f', 'SSID,SIGNAL,SECURITY', 'dev', 'wifi'], text=True)
             ssids = []
             for line in res.strip().split('\n'):
                 if line:
-                    parts = line.rsplit(':', 1)
-                    if len(parts) == 2:
+                    parts = line.split(':')
+                    if len(parts) >= 3:
                         ssid = parts[0].replace('\\:', ':').strip()
                         if ssid:
-                            ssids.append({"ssid": ssid, "signal": parts[1].strip() + "%"})
+                            ssids.append({
+                                "ssid": ssid, 
+                                "signal": parts[1].strip() + "%",
+                                "security": parts[2].strip()
+                            })
+            # deduplicate by SSID
             unique_ssids = {v['ssid']:v for v in ssids}.values()
             return list(unique_ssids)
         except Exception as e:
             return [{"error": str(e)}]
+
+@app.get("/api/wifi/profiles")
+def get_wifi_profiles():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM wifi_profiles ORDER BY last_connected_at DESC")
+        profiles = [dict(row) for row in cursor.fetchall()]
+    except Exception:
+        profiles = []
+    finally:
+        conn.close()
+    return profiles
+
+class WifiConnectRequest(BaseModel):
+    ssid: str
+    password: str
+
+@app.post("/api/wifi/connect")
+def connect_wifi(req: WifiConnectRequest, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    import platform
+    
+    # Save/Update in DB
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    cursor.execute("SELECT id, password FROM wifi_profiles WHERE ssid=?", (req.ssid,))
+    row = cursor.fetchone()
+    
+    actual_password = req.password
+    if row:
+        if not actual_password and row['password']:
+            actual_password = row['password']
+            
+        if req.password:
+            cursor.execute("UPDATE wifi_profiles SET password=?, last_connected_at=? WHERE id=?", (req.password, current_time, row['id']))
+        else:
+            cursor.execute("UPDATE wifi_profiles SET last_connected_at=? WHERE id=?", (current_time, row['id']))
+    else:
+        cursor.execute("INSERT INTO wifi_profiles (ssid, password, is_auto_reconnect, last_connected_at) VALUES (?, ?, 1, ?)", 
+                       (req.ssid, req.password, current_time))
+    conn.commit()
+    conn.close()
+
+    if platform.system() == "Windows":
+        return {"status": "success", "message": f"Windows 模擬: 已儲存 {req.ssid} 並嘗試連線"}
+    else:
+        try:
+            # Delete old connection profile to avoid conflict (e.g. 'property is missing' error from previous failed attempts)
+            try:
+                subprocess.run(['nmcli', 'connection', 'delete', req.ssid], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except:
+                pass
+
+            if actual_password:
+                cmd = ['nmcli', 'dev', 'wifi', 'connect', req.ssid, 'password', actual_password]
+            else:
+                cmd = ['nmcli', 'dev', 'wifi', 'connect', req.ssid]
+                
+            res = subprocess.check_output(cmd, text=True, stderr=subprocess.STDOUT)
+            return {"status": "success", "message": "連線成功", "details": res.strip()}
+        except subprocess.CalledProcessError as e:
+            err_output = e.output.strip()
+            if "Secrets were required" in err_output or "802-11-wireless-security.psk" in err_output:
+                return JSONResponse(status_code=400, content={"status": "error", "message": "密碼錯誤，或是未提供密碼！請確認密碼是否正確。", "details": err_output})
+            return JSONResponse(status_code=400, content={"status": "error", "message": "連線失敗", "details": err_output})
+        except Exception as e:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(e)})
+
+class ToggleAutoRequest(BaseModel):
+    is_auto_reconnect: bool
+
+@app.post("/api/wifi/profiles/{id}/toggle_auto")
+def toggle_wifi_auto(id: int, req: ToggleAutoRequest, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE wifi_profiles SET is_auto_reconnect=? WHERE id=?", (req.is_auto_reconnect, id))
+    
+    # Also attempt to update nmcli connection if Linux
+    import platform
+    if platform.system() != "Windows":
+        cursor.execute("SELECT ssid FROM wifi_profiles WHERE id=?", (id,))
+        row = cursor.fetchone()
+        if row:
+            auto_val = 'yes' if req.is_auto_reconnect else 'no'
+            try:
+                subprocess.run(['nmcli', 'connection', 'modify', row['ssid'], 'connection.autoconnect', auto_val])
+            except:
+                pass
+                
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
+
+@app.delete("/api/wifi/profiles/{id}")
+def delete_wifi_profile(id: int, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT ssid FROM wifi_profiles WHERE id=?", (id,))
+    row = cursor.fetchone()
+    
+    if row:
+        ssid = row['ssid']
+        cursor.execute("DELETE FROM wifi_profiles WHERE id=?", (id,))
+        conn.commit()
+        
+        import platform
+        if platform.system() != "Windows":
+            try:
+                subprocess.run(['nmcli', 'connection', 'delete', ssid])
+            except:
+                pass
+    conn.close()
+    return {"status": "success"}
 
 # API to get historical data for a device
 @app.get("/api/history/{device_id}")
@@ -447,6 +669,277 @@ def download_device_history(device_id: int):
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=device_{device_id}_history.csv"}
     )
+
+@app.post("/api/system/reboot")
+def reboot_system(request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    import platform
+    import subprocess
+    import threading
+    import time
+    
+    if platform.system() == "Windows":
+        return {"status": "success", "message": "[Windows 模擬環境] 重新開機指令已觸發，但在此環境下不會實際執行。"}
+        
+    def do_reboot():
+        time.sleep(2) # Wait a bit to allow the HTTP response to be sent
+        subprocess.run(['reboot'])
+        
+    threading.Thread(target=do_reboot, daemon=True).start()
+    return {"status": "success", "message": "系統即將在幾秒後重新開機，請稍候約 1 分鐘再重新整理網頁。"}
+
+@app.get("/api/ports")
+def get_ports(request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    import serial.tools.list_ports
+    ports = serial.tools.list_ports.comports()
+    port_list = [{"port": p.device, "description": p.description} for p in ports]
+    
+    # 為了像 Node-RED 一樣內建支援樹莓派 GPIO Serial，我們手動將常見的實體埠加入清單
+    import platform
+    import os
+    if platform.system() == "Linux":
+        pi_ports = [
+            {"port": "/dev/serial0", "description": "Raspberry Pi UART (Default)"},
+            {"port": "/dev/ttyS0", "description": "Raspberry Pi Mini UART"},
+            {"port": "/dev/ttyAMA0", "description": "Raspberry Pi Hardware UART"}
+        ]
+        existing_ports = [p["port"] for p in port_list]
+        for pp in pi_ports:
+            if os.path.exists(pp["port"]) and pp["port"] not in existing_ports:
+                port_list.append(pp)
+                
+    return port_list
+
+@app.get("/api/system_logs")
+def get_system_logs(request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    import platform
+    import subprocess
+    
+    if platform.system() == "Windows":
+        return {"status": "success", "logs": "[Windows 模擬環境]\n系統記錄功能僅在樹莓派環境 (Linux systemd) 完整支援。\n此為模擬日誌輸出...\nSystem Boot OK\nRS485 Polling Started..."}
+        
+    try:
+        # Fetch the last 200 lines from the systemd service
+        res = subprocess.check_output(
+            ['journalctl', '-u', 'rs485_dashboard.service', '-n', '200', '--no-pager'],
+            text=True, stderr=subprocess.STDOUT
+        )
+        return {"status": "success", "logs": res.strip()}
+    except Exception as e:
+        return {"status": "error", "logs": f"無法取得系統日誌: {str(e)}"}
+
+@app.get("/api/configs")
+def get_configs(request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, created_at FROM saved_configs ORDER BY created_at DESC")
+    configs = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return configs
+
+@app.post("/api/configs")
+def save_config(req: SaveConfigReq, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 讀取所有設定
+    cursor.execute("SELECT * FROM system_settings WHERE id=1")
+    sys_settings = dict(cursor.fetchone())
+    
+    cursor.execute("SELECT * FROM rs485_commands")
+    commands = [dict(r) for r in cursor.fetchall()]
+    
+    cursor.execute("SELECT * FROM rs485_groups")
+    groups = [dict(r) for r in cursor.fetchall()]
+    
+    cursor.execute("SELECT * FROM rs485_devices")
+    devices = [dict(r) for r in cursor.fetchall()]
+    
+    config_data = json.dumps({
+        "system_settings": sys_settings,
+        "rs485_commands": commands,
+        "rs485_groups": groups,
+        "rs485_devices": devices
+    }, ensure_ascii=False)
+    
+    cursor.execute("INSERT INTO saved_configs (name, config_data) VALUES (?, ?)", (req.name, config_data))
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
+
+@app.post("/api/configs/{id}/load")
+def load_config(id: int, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT config_data FROM saved_configs WHERE id=?", (id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Config not found")
+        
+    data = json.loads(row['config_data'])
+    
+    # 清空現有設定
+    cursor.execute("DELETE FROM rs485_devices")
+    cursor.execute("DELETE FROM rs485_groups")
+    cursor.execute("DELETE FROM rs485_commands")
+    
+    # 寫入 system_settings
+    if 'system_settings' in data:
+        ss = data['system_settings']
+        fields = ', '.join([f"{k}=?" for k in ss.keys() if k != 'id'])
+        values = [ss[k] for k in ss.keys() if k != 'id']
+        values.append(1) # id=1
+        cursor.execute(f"UPDATE system_settings SET {fields} WHERE id=?", values)
+        
+    # 寫入 rs485_commands
+    if 'rs485_commands' in data:
+        for cmd in data['rs485_commands']:
+            keys = [k for k in cmd.keys() if k != 'id']
+            cols = ', '.join(keys)
+            placeholders = ', '.join(['?' for _ in keys])
+            vals = [cmd[k] for k in keys]
+            cursor.execute(f"INSERT INTO rs485_commands ({cols}) VALUES ({placeholders})", vals)
+            
+    # 寫入 rs485_groups
+    if 'rs485_groups' in data:
+        for g in data['rs485_groups']:
+            keys = [k for k in g.keys()]
+            cols = ', '.join(keys)
+            placeholders = ', '.join(['?' for _ in keys])
+            vals = [g[k] for k in keys]
+            cursor.execute(f"INSERT INTO rs485_groups ({cols}) VALUES ({placeholders})", vals)
+            
+    # 寫入 rs485_devices
+    if 'rs485_devices' in data:
+        for d in data['rs485_devices']:
+            keys = [k for k in d.keys()]
+            cols = ', '.join(keys)
+            placeholders = ', '.join(['?' for _ in keys])
+            vals = [d[k] for k in keys]
+            cursor.execute(f"INSERT INTO rs485_devices ({cols}) VALUES ({placeholders})", vals)
+
+    conn.commit()
+    conn.close()
+    
+    # 重新載入排程器與 polling interval
+    scheduler.reschedule_job('poll_job', trigger='interval', seconds=get_polling_interval())
+    
+    return {"status": "success", "message": "設定檔已成功載入"}
+
+@app.delete("/api/configs/{id}")
+def delete_config(id: int, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM saved_configs WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
+
+# --- Tailscale Management ---
+@app.get("/api/tailscale/status")
+def get_tailscale_status():
+    import platform, subprocess
+    if platform.system() == "Windows":
+        return {"installed": False, "status": "Not installed", "ip": ""}
+        
+    try:
+        subprocess.run(['which', 'tailscale'], check=True, stdout=subprocess.DEVNULL)
+    except:
+        return {"installed": False, "status": "未安裝", "ip": ""}
+        
+    try:
+        res = subprocess.check_output(['tailscale', 'status', '--json'], text=True)
+        import json
+        ts_data = json.loads(res)
+        state = ts_data.get('BackendState', '')
+        if state == "Running":
+            ip = ""
+            try:
+                ip = subprocess.check_output(['tailscale', 'ip', '-4'], text=True).strip()
+            except:
+                pass
+            return {"installed": True, "status": "已連線 (Running)", "ip": ip}
+        else:
+            return {"installed": True, "status": f"未連線 ({state})", "ip": ""}
+    except Exception as e:
+        return {"installed": True, "status": "無法取得狀態", "ip": ""}
+
+@app.post("/api/tailscale/install")
+def install_tailscale(request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    import platform, subprocess
+    if platform.system() == "Windows":
+        return {"status": "error", "message": "Windows 環境不支援自動安裝 Tailscale"}
+        
+    try:
+        subprocess.Popen(['bash', '-c', 'curl -fsSL https://tailscale.com/install.sh | sh'])
+        return {"status": "success", "message": "Tailscale 安裝腳本已在背景啟動，請稍等 1~3 分鐘後重新整理頁面。"}
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"status": "error", "message": str(e)})
+
+class TailscaleUpRequest(BaseModel):
+    auth_key: str
+
+@app.post("/api/tailscale/up")
+def tailscale_up(req: TailscaleUpRequest, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    import subprocess
+    try:
+        cmd = ['sudo', '-S', 'tailscale', 'up']
+        if req.auth_key:
+            cmd.extend(['--authkey', req.auth_key])
+            
+        process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        out, err = process.communicate(input="cyc12345\n")
+        
+        if process.returncode == 0:
+            return {"status": "success", "message": "Tailscale 已啟動連線"}
+        else:
+            return JSONResponse(status_code=400, content={"status": "error", "message": f"啟動失敗: {err}"})
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"status": "error", "message": str(e)})
+
+@app.post("/api/tailscale/down")
+def tailscale_down(request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    import subprocess
+    try:
+        process = subprocess.Popen(['sudo', '-S', 'tailscale', 'down'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process.communicate(input="cyc12345\n")
+        return {"status": "success", "message": "Tailscale 已斷線"}
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"status": "error", "message": str(e)})
+
+@app.post("/api/tailscale/uninstall")
+def uninstall_tailscale(request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    import subprocess
+    try:
+        process = subprocess.Popen(['sudo', '-S', 'apt-get', 'remove', '--purge', 'tailscale', '-y'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process.communicate(input="cyc12345\n")
+        return {"status": "success", "message": "Tailscale 移除程序已在背景啟動。"}
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"status": "error", "message": str(e)})
 
 if __name__ == "__main__":
     import uvicorn

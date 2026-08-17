@@ -50,6 +50,7 @@
             <nav style="display: flex; gap: 1rem; align-items: center;">
                 <a href="/" class="nav-link">儀表板</a>
                 <a href="/settings" class="nav-link" style="color: var(--text-primary); background: rgba(255,255,255,0.05);">系統設定</a>
+                <button class="btn" @click="rebootSystem" style="padding: 0.4rem 1rem; background-color: #f59e0b; color: #fff; border: none;">重新開機</button>
                 <button class="btn btn-danger" @click="logout" style="padding: 0.4rem 1rem;">登出</button>
             </nav>
         </header>
@@ -74,6 +75,18 @@
                         <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent-color);">無線網路</h3>
                         <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">掃描與連線 Wi-Fi</p>
                     </div>
+                    <div class="card tab-card" :class="{ active: activeTab === 'logs' }" @click="activeTab = 'logs'">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent-color);">系統紀錄 (System Logs)</h3>
+                        <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">即時查看系統運作日誌</p>
+                    </div>
+                    <div class="card tab-card" :class="{ active: activeTab === 'configs' }" @click="activeTab = 'configs'">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent-color);">💾 設定檔管理</h3>
+                        <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">儲存與還原系統設定</p>
+                    </div>
+                    <div class="card tab-card" :class="{ active: activeTab === 'tailscale' }" @click="activeTab = 'tailscale'">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent-color);">🌐 遠端連線 (Tailscale)</h3>
+                        <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">虛擬區域網路與遠端管理</p>
+                    </div>
                 </div>
 
                 <!-- Content Area -->
@@ -86,10 +99,10 @@
                         <div class="form-group">
                             <label>Serial Port (序列埠)</label>
                             <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
-                                <select v-model="sysSettings.serial_port" style="flex: 1;">
-                                    <option value="">-- 請選擇 --</option>
-                                    <option v-for="port in ports" :key="port.port" :value="port.port">{{ port.port }} ({{ port.description }})</option>
-                                </select>
+                                <input list="port-list" v-model="sysSettings.serial_port" style="flex: 1;" placeholder="例如: /dev/serial0 或 /dev/ttyS0">
+                                <datalist id="port-list">
+                                    <option v-for="port in ports" :key="port.port" :value="port.port">{{ port.description }}</option>
+                                </datalist>
                                 <button class="btn btn-primary" @click="fetchPorts" type="button" style="padding: 0.75rem;">掃描</button>
                                 <button type="button" class="btn" @click="testConnection('serial')" style="background-color: var(--accent-color); padding: 0.75rem;">測試連線</button>
                             </div>
@@ -131,9 +144,20 @@
                                 <label>密碼 (Password)</label>
                                 <input type="text" v-model="sysSettings.mqtt_pass">
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" style="margin-bottom: 0.5rem;">
                                 <label>Topic 前綴</label>
                                 <input type="text" v-model="sysSettings.mqtt_topic">
+                            </div>
+                            
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; margin-top: 0.5rem; background: rgba(0,0,0,0.1); padding: 0.75rem; border-radius: 6px;">
+                                <div>
+                                    <label style="margin:0; color: var(--accent-color);">帶入裝置 MAC 位址做為前綴</label>
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">開啟後，主題開頭會自動加上樹莓派的 MAC (例如: A1B2C3D4/前綴)</div>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" v-model="sysSettings.mqtt_use_mac_prefix">
+                                    <span class="slider"></span>
+                                </label>
                             </div>
 
                             <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px;">
@@ -401,22 +425,259 @@
             </section>
 
             <!-- Wi-Fi 設定 -->
-            <section v-show="activeTab === 'wifi'" class="settings-section card" style="margin-bottom: 0;">
-                <h2>無線網路設定</h2>
-                <button class="btn btn-primary" @click="scanWifi" style="margin-bottom: 1rem;">掃描附近 Wi-Fi</button>
-                
-                <div v-if="wifiList.length > 0">
-                    <ul style="list-style: none; padding: 0;">
-                        <li v-for="wifi in wifiList" :key="wifi.ssid" style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;">
-                            <span>{{ wifi.ssid }} (訊號: {{ wifi.signal }})</span>
-                            <button class="btn" @click="connectWifi(wifi.ssid)">連線</button>
-                        </li>
-                    </ul>
+            <section v-show="activeTab === 'wifi'">
+                <!-- 當前無線網路狀態 (Wi-Fi Status) -->
+                <div class="card" style="margin-bottom: 1.5rem; border: 1px solid var(--accent-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="margin: 0; color: var(--accent-color); font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>📶</span> 當前無線網路狀態 (Wi-Fi Status)
+                        </h2>
+                        <button class="btn btn-primary" @click="fetchWifiStatus" style="font-size: 0.85rem;">🔄 重新整理狀態</button>
+                    </div>
+                    
+                    <div class="grid-2" style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px;">
+                        <div>
+                            <div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">目前連線基地台 (SSID)</div>
+                            <div style="font-size: 1.2rem; font-weight: bold; color: #4ade80;">
+                                {{ wifiStatus.ssid || '未連線' }} 
+                                <span v-if="wifiStatus.ssid" style="font-size: 0.75rem; background: rgba(74, 222, 128, 0.2); border: 1px solid #4ade80; padding: 2px 6px; border-radius: 4px; margin-left: 8px; vertical-align: middle;">已連線</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <div>
+                                <div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">訊號強度</div>
+                                <div style="font-size: 1.1rem; color: #38bdf8; font-weight: bold;">{{ wifiStatus.signal || '-' }}</div>
+                            </div>
+                            <div style="border-left: 1px solid var(--border-color); padding-left: 1rem;">
+                                <div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">IP 位址 ({{ wifiStatus.interface || '未知' }})</div>
+                                <div style="font-size: 1.1rem; color: #fbbf24; font-weight: bold;">{{ wifiStatus.ip || '-' }}</div>
+                            </div>
+                            <div style="border-left: 1px solid var(--border-color); padding-left: 1rem;">
+                                <div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">網路卡介面</div>
+                                <div style="font-size: 1.1rem; font-weight: bold;">{{ wifiStatus.interface || '-' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div v-if="wifiScanned" style="margin-top: 1rem; padding: 0.75rem 1rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; color: #4ade80; font-size: 0.9rem;">
+                        掃描完成，共找到 {{ wifiList.length }} 個無線網路
+                    </div>
                 </div>
-                <div v-else-if="wifiScanned" style="color: var(--text-secondary);">
-                    找不到任何網路。
+
+                <!-- 掃描周邊 Wi-Fi 網路 (Available Networks) -->
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>((📡))</span> 掃描周邊 Wi-Fi 網路 (Available Networks)
+                        </h2>
+                        <button class="btn" @click="scanWifi" style="font-size: 0.85rem; border: 1px solid var(--accent-color); color: var(--accent-color); background: transparent;">🔄 重新掃描</button>
+                    </div>
+                    
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.95rem;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-secondary); text-align: left;">
+                                    <th style="padding: 1rem 0.5rem;">訊號</th>
+                                    <th style="padding: 1rem 0.5rem;">SSID 名稱</th>
+                                    <th style="padding: 1rem 0.5rem;">加密模式</th>
+                                    <th style="padding: 1rem 0.5rem;">記憶狀態</th>
+                                    <th style="padding: 1rem 0.5rem;">連線狀態</th>
+                                    <th style="padding: 1rem 0.5rem;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="wifi in wifiList" :key="wifi.ssid" style="border-bottom: 1px solid rgba(255,255,255,0.05);" :style="{ background: wifi.ssid === wifiStatus.ssid ? 'rgba(0, 0, 0, 0.3)' : 'transparent' }">
+                                    <td style="padding: 1rem 0.5rem; color: #fbbf24;">📶 {{ wifi.signal }}</td>
+                                    <td style="padding: 1rem 0.5rem; font-weight: bold;">{{ wifi.ssid }}</td>
+                                    <td style="padding: 1rem 0.5rem; color: var(--text-secondary);">{{ wifi.security }}</td>
+                                    <td style="padding: 1rem 0.5rem;">
+                                        <span v-if="hasProfile(wifi.ssid)" style="font-size: 0.8rem; background: rgba(56, 189, 248, 0.1); border: 1px solid #38bdf8; color: #38bdf8; padding: 2px 6px; border-radius: 4px;">已記憶密碼</span>
+                                    </td>
+                                    <td style="padding: 1rem 0.5rem;">
+                                        <span v-if="wifi.ssid === wifiStatus.ssid" style="font-size: 0.8rem; background: rgba(74, 222, 128, 0.1); border: 1px solid #4ade80; color: #4ade80; padding: 2px 6px; border-radius: 4px;">使用中</span>
+                                    </td>
+                                    <td style="padding: 1rem 0.5rem;">
+                                        <button v-if="wifi.ssid === wifiStatus.ssid" class="btn" style="background: rgba(255,255,255,0.1); color: #ccc; cursor: not-allowed; padding: 0.4rem 0.8rem; font-size: 0.85rem;" disabled>已連線</button>
+                                        <button v-else class="btn btn-primary" @click="connectWifi(wifi.ssid, hasProfile(wifi.ssid))" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">{{ hasProfile(wifi.ssid) ? '一鍵連線' : '連線' }}</button>
+                                    </td>
+                                </tr>
+                                <tr v-if="wifiList.length === 0 && wifiScanned">
+                                    <td colspan="6" style="padding: 2rem; text-align: center; color: var(--text-secondary);">無可用網路</td>
+                                </tr>
+                                <tr v-if="wifiList.length === 0 && !wifiScanned">
+                                    <td colspan="6" style="padding: 2rem; text-align: center; color: var(--text-secondary);">請點擊上方重新掃描</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 已儲存/歷史 Wi-Fi 帳密紀錄 (Saved Wi-Fi Profiles) -->
+                <div class="card" style="margin-bottom: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>🛡️</span> 已儲存/歷史 Wi-Fi 帳密紀錄 (Saved Wi-Fi Profiles)
+                        </h2>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">換至新舊地點時系統將自動連線已記憶的 Wi-Fi</div>
+                    </div>
+                    
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.95rem;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-secondary); text-align: left;">
+                                    <th style="padding: 1rem 0.5rem;">SSID 名稱</th>
+                                    <th style="padding: 1rem 0.5rem;">記憶密碼</th>
+                                    <th style="padding: 1rem 0.5rem;">最後更新/連線時間</th>
+                                    <th style="padding: 1rem 0.5rem;">自動連線狀態</th>
+                                    <th style="padding: 1rem 0.5rem; text-align: right;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="profile in wifiProfiles" :key="profile.id" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 1rem 0.5rem; font-weight: bold; color: #4ade80;">{{ profile.ssid }}</td>
+                                    <td style="padding: 1rem 0.5rem; color: var(--text-secondary);">•••••••• 👁️</td>
+                                    <td style="padding: 1rem 0.5rem; color: var(--text-secondary);">{{ profile.last_connected_at || '未知' }}</td>
+                                    <td style="padding: 1rem 0.5rem;">
+                                        <button @click="toggleAuto(profile)" :style="{
+                                            background: profile.is_auto_reconnect ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255, 255, 255, 0.1)',
+                                            border: profile.is_auto_reconnect ? '1px solid #4ade80' : '1px solid #666',
+                                            color: profile.is_auto_reconnect ? '#4ade80' : '#888',
+                                            padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', outline: 'none'
+                                        }">
+                                            {{ profile.is_auto_reconnect ? '啟用 (Auto Reconnect)' : '停用' }}
+                                        </button>
+                                    </td>
+                                    <td style="padding: 1rem 0.5rem; text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                        <button class="btn btn-primary" @click="connectWifi(profile.ssid, true)" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" :disabled="profile.ssid === wifiStatus.ssid">一鍵<br>連線</button>
+                                        <button class="btn" @click="editProfile(profile)" style="background: #3b82f6; color: white; border: none; padding: 0.4rem 0.8rem; font-size: 0.85rem;">編<br>輯</button>
+                                        <button class="btn btn-danger" @click="deleteProfile(profile.id)" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">刪除/<br>忘記</button>
+                                    </td>
+                                </tr>
+                                <tr v-if="wifiProfiles.length === 0">
+                                    <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-secondary);">尚無儲存的 Wi-Fi 紀錄</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
+
+            <!-- 系統紀錄 (System Logs) -->
+            <section v-show="activeTab === 'logs'" class="settings-section card" style="margin-bottom: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h2 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; color: var(--accent-color);">
+                        <span>📋</span> 系統紀錄 (System Logs)
+                    </h2>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; cursor: pointer;">
+                            <input type="checkbox" v-model="autoRefreshLogs" @change="toggleAutoRefreshLogs" style="accent-color: var(--accent-color);">
+                            自動更新 (3秒)
+                        </label>
+                        <button class="btn btn-primary" @click="fetchSystemLogs" style="font-size: 0.85rem;">🔄 重新整理</button>
+                    </div>
+                </div>
+                <div style="background: #111; color: #4ade80; padding: 1rem; border-radius: 8px; font-family: monospace; overflow-y: auto; max-height: 60vh; font-size: 0.9rem; border: 1px solid #333;" id="logContainer">
+                    <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">{{ systemLogs || '正在載入系統紀錄...' }}</pre>
+                </div>
+            </section>
+
+            <!-- 設定檔管理 (Config Profiles) -->
+            <section v-show="activeTab === 'configs'" class="settings-section card" style="margin-bottom: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; color: var(--accent-color);">
+                        <span>💾</span> 設定檔管理 (Config Profiles)
+                    </h2>
+                </div>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">將目前的 RS485 設備、群組、指令與通訊參數打包儲存，方便日後隨時還原與切換測試情境。</p>
+
+                <div style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                    <h3 style="margin-top: 0; margin-bottom: 1rem;">儲存當前設定</h3>
+                    <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                            <label>設定檔名稱</label>
+                            <input type="text" v-model="newConfigName" placeholder="例如: 現場測試環境A設定">
+                        </div>
+                        <button class="btn btn-primary" @click="saveConfig" style="padding: 0.75rem 1.5rem;">打包儲存目前設定</button>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom: 1rem;">已儲存的設定檔</h3>
+                <div v-if="savedConfigs.length === 0" style="padding: 2rem; text-align: center; color: var(--text-secondary); background: rgba(0,0,0,0.2); border-radius: 8px;">
+                    目前沒有儲存任何設定檔。
+                </div>
+                <div v-else style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div v-for="cfg in savedConfigs" :key="cfg.id" class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: rgba(0,0,0,0.2);">
+                        <div>
+                            <div style="font-weight: bold; font-size: 1.1rem;">{{ cfg.name }}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">儲存時間: {{ cfg.created_at }}</div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn" @click="loadConfig(cfg)" style="background: #10b981; color: white;">載入還原</button>
+                            <button class="btn btn-danger" @click="deleteConfig(cfg)">刪除</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 遠端連線 (Tailscale) -->
+            <section v-show="activeTab === 'tailscale'" class="settings-section card" style="margin-bottom: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; color: var(--accent-color);">
+                        <span>🌐</span> 遠端連線 (Tailscale)
+                    </h2>
+                    <button class="btn btn-primary" @click="fetchTailscaleStatus" style="font-size: 0.85rem;">🔄 重新檢查狀態</button>
+                </div>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">透過 Tailscale 建立安全的虛擬區域網路，讓您可以在外網隨時連線回智慧管理平台。</p>
+
+                <!-- 狀態與安裝面板 -->
+                <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <div>
+                            <span style="font-size: 1.1rem; font-weight: bold;">目前狀態：</span>
+                            <span :style="{ color: tsStatus.ip ? '#4ade80' : (tsStatus.installed ? '#f59e0b' : '#ef4444'), fontWeight: 'bold' }">
+                                {{ tsStatus.status }}
+                            </span>
+                        </div>
+                        
+                        <div v-if="!tsStatus.installed">
+                            <button class="btn btn-primary" @click="installTailscale">⬇️ 一鍵安裝 Tailscale</button>
+                        </div>
+                        <div v-else>
+                            <button class="btn btn-danger" @click="uninstallTailscale">解除安裝</button>
+                        </div>
+                    </div>
+                    
+                    <div v-if="tsStatus.ip" style="background: rgba(74, 222, 128, 0.1); border: 1px solid #4ade80; color: #4ade80; padding: 1rem; border-radius: 6px;">
+                        <h4 style="margin: 0 0 0.5rem 0;">🎉 連線成功</h4>
+                        <div style="font-size: 1.2rem; font-weight: bold; font-family: monospace;">
+                            您的專屬遠端 IP：{{ tsStatus.ip }}
+                        </div>
+                        <p style="margin: 0.5rem 0 0; font-size: 0.9rem;">
+                            請在您的電腦或手機上也安裝 Tailscale 並登入同一個帳號，即可使用 <a :href="'http://' + tsStatus.ip + ':8000'" target="_blank" style="color: #60a5fa; text-decoration: underline;">http://{{ tsStatus.ip }}:8000</a> 連線回本系統。
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- 登入設定 -->
+                <div v-if="tsStatus.installed" style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 8px;">
+                    <h3 style="margin-top: 0; margin-bottom: 1rem; color: var(--accent-color);">身分驗證設定</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                        若尚未連線，請至 Tailscale 控制台取得一組 Auth Key，貼上並點擊連線。<br>
+                        如果您希望暫停遠端存取，可以點擊「斷線」。
+                    </p>
+                    
+                    <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                            <label>Auth Key (授權金鑰)</label>
+                            <input type="password" v-model="tsAuthKey" placeholder="tskey-auth-xxxxx...">
+                        </div>
+                        <button class="btn btn-primary" @click="tailscaleUp" :disabled="tsStatus.ip !== ''" style="padding: 0.75rem 1.5rem;">連線綁定</button>
+                        <button class="btn" @click="tailscaleDown" :disabled="!tsStatus.ip" style="padding: 0.75rem 1.5rem; background: #64748b; color: white;">斷線</button>
+                    </div>
+                </div>
+
+            </section>
+
                 </div>
             </div>
         </main>
@@ -435,6 +696,16 @@
                 const ports = ref([]);
                 const wifiList = ref([]);
                 const wifiScanned = ref(false);
+                
+                const tsStatus = ref({ installed: false, status: '檢查中...', ip: '' });
+                const tsAuthKey = ref('');
+                
+                const systemLogs = ref("");
+                const autoRefreshLogs = ref(false);
+                let logInterval = null;
+                
+                const savedConfigs = ref([]);
+                const newConfigName = ref("");
 
                 const fetchSysSettings = async () => {
                     const res = await fetch('/api/system_settings');
@@ -446,6 +717,7 @@
                         data.simulation_mode = !!data.simulation_mode;
                         data.mqtt_upload_on_change = !!data.mqtt_upload_on_change;
                         data.mqtt_upload_on_timer = !!data.mqtt_upload_on_timer;
+                        data.mqtt_use_mac_prefix = !!data.mqtt_use_mac_prefix;
                         sysSettings.value = data;
                     }
                 };
@@ -616,6 +888,19 @@
                     return hexArr.join(' ');
                 };
 
+                const wifiStatus = ref({});
+                const wifiProfiles = ref([]);
+
+                const fetchWifiStatus = async () => {
+                    const res = await fetch('/api/wifi/status');
+                    wifiStatus.value = await res.json();
+                };
+
+                const fetchWifiProfiles = async () => {
+                    const res = await fetch('/api/wifi/profiles');
+                    wifiProfiles.value = await res.json();
+                };
+
                 const scanWifi = async () => {
                     wifiList.value = [];
                     wifiScanned.value = false;
@@ -624,10 +909,171 @@
                     wifiScanned.value = true;
                 };
 
-                const connectWifi = (ssid) => {
-                    const password = prompt(`請輸入 ${ssid} 的密碼:`);
-                    if (password !== null) {
-                        alert(`已傳送連線請求到 ${ssid} (實際功能需於後端以 nmcli 實作)`);
+                const hasProfile = (ssid) => {
+                    return wifiProfiles.value.some(p => p.ssid === ssid);
+                };
+
+                const connectWifi = async (ssid, hasSavedProfile = false) => {
+                    let password = "";
+                    if (!hasSavedProfile) {
+                        password = prompt(`請輸入 ${ssid} 的密碼 (若無密碼請直接按確定):`);
+                        if (password === null) return; // Cancelled
+                    }
+                    
+                    const res = await fetch('/api/wifi/connect', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ssid, password })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert(data.message);
+                        fetchWifiStatus();
+                        fetchWifiProfiles();
+                    } else {
+                        alert(`連線失敗: ${data.message}\n${data.details || ''}`);
+                    }
+                };
+                
+                const deleteProfile = async (id) => {
+                    if (confirm("確定要忘記此網路並刪除密碼嗎？")) {
+                        const res = await fetch(`/api/wifi/profiles/${id}`, { method: 'DELETE' });
+                        if (res.ok) {
+                            fetchWifiProfiles();
+                        }
+                    }
+                };
+                
+                const toggleAuto = async (profile) => {
+                    const res = await fetch(`/api/wifi/profiles/${profile.id}/toggle_auto`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ is_auto_reconnect: !profile.is_auto_reconnect })
+                    });
+                    if (res.ok) {
+                        fetchWifiProfiles();
+                    }
+                };
+                
+                const editProfile = (profile) => {
+                    const password = prompt(`重新輸入 ${profile.ssid} 的密碼:`);
+                    if (password) {
+                        connectWifi(profile.ssid, false); // reuse connect to update password
+                    }
+                };
+                
+                const fetchSystemLogs = async () => {
+                    try {
+                        const res = await fetch('/api/system_logs');
+                        const data = await res.json();
+                        if (data && data.status === 'success') {
+                            systemLogs.value = data.logs;
+                            // auto scroll to bottom
+                            setTimeout(() => {
+                                const container = document.getElementById('logContainer');
+                                if (container) container.scrollTop = container.scrollHeight;
+                            }, 100);
+                        } else {
+                            systemLogs.value = data.logs || "無法取得紀錄。";
+                        }
+                    } catch (e) {
+                        systemLogs.value = "連線失敗: " + e.message;
+                    }
+                };
+
+                const toggleAutoRefreshLogs = () => {
+                    if (autoRefreshLogs.value) {
+                        logInterval = setInterval(fetchSystemLogs, 3000);
+                        fetchSystemLogs();
+                    } else {
+                        if (logInterval) clearInterval(logInterval);
+                    }
+                };
+                
+                // Watch for tab change to start/stop auto refresh
+                Vue.watch(activeTab, (newTab) => {
+                    if (newTab === 'logs') {
+                        fetchSystemLogs();
+                        if (autoRefreshLogs.value && !logInterval) {
+                            logInterval = setInterval(fetchSystemLogs, 3000);
+                        }
+                    } else {
+                        if (logInterval) {
+                            clearInterval(logInterval);
+                            logInterval = null;
+                        }
+                    }
+                });
+
+                const fetchTailscaleStatus = async () => {
+                    tsStatus.value.status = '檢查中...';
+                    try {
+                        const res = await fetch('/api/tailscale/status');
+                        tsStatus.value = await res.json();
+                    } catch (e) {
+                        tsStatus.value.status = '連線失敗';
+                    }
+                };
+                
+                const installTailscale = async () => {
+                    if (confirm('即將在背景執行 Tailscale 安裝腳本，可能需要 1~3 分鐘。請確定樹莓派已連上外網，要繼續嗎？')) {
+                        tsStatus.value.status = '安裝中... 請稍候幾分鐘後重新整理';
+                        try {
+                            const res = await fetch('/api/tailscale/install', { method: 'POST' });
+                            const data = await res.json();
+                            alert(data.message);
+                        } catch (e) {
+                            alert('發送安裝指令失敗');
+                        }
+                    }
+                };
+                
+                const uninstallTailscale = async () => {
+                    if (confirm('警告：解除安裝將清除所有 Tailscale 設定。確定要繼續嗎？')) {
+                        try {
+                            const res = await fetch('/api/tailscale/uninstall', { method: 'POST' });
+                            const data = await res.json();
+                            alert(data.message);
+                            tsStatus.value.installed = false;
+                            tsStatus.value.ip = '';
+                            tsStatus.value.status = '解除安裝中...';
+                        } catch (e) {
+                            alert('發送解除安裝指令失敗');
+                        }
+                    }
+                };
+                
+                const tailscaleUp = async () => {
+                    if (!tsAuthKey.value) {
+                        alert('請輸入 Auth Key');
+                        return;
+                    }
+                    tsStatus.value.status = '連線中...';
+                    try {
+                        const res = await fetch('/api/tailscale/up', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ auth_key: tsAuthKey.value })
+                        });
+                        const data = await res.json();
+                        alert(data.message);
+                        fetchTailscaleStatus();
+                        tsAuthKey.value = '';
+                    } catch (e) {
+                        alert('連線請求失敗');
+                    }
+                };
+                
+                const tailscaleDown = async () => {
+                    if (confirm('確定要斷開遠端連線嗎？斷開後您將無法透過 Tailscale IP 存取本機。')) {
+                        try {
+                            const res = await fetch('/api/tailscale/down', { method: 'POST' });
+                            const data = await res.json();
+                            alert(data.message);
+                            fetchTailscaleStatus();
+                        } catch (e) {
+                            alert('斷線請求失敗');
+                        }
                     }
                 };
 
@@ -636,6 +1082,10 @@
                     await fetchCommands();
                     await fetchGroups();
                     await fetchPorts();
+                    await fetchWifiStatus();
+                    await fetchWifiProfiles();
+                    await fetchConfigs();
+                    await fetchTailscaleStatus();
                     loading.value = false;
                 });
 
@@ -645,12 +1095,93 @@
                         window.location.href = '/login';
                     }
                 };
+                
+                const rebootSystem = async () => {
+                    if (confirm('⚠️ 確定要將樹莓派重新開機嗎？\n\n重新開機約需 1 分鐘，期間系統將暫時中斷服務。')) {
+                        try {
+                            const res = await fetch('/api/system/reboot', { method: 'POST' });
+                            const data = await res.json();
+                            alert(data.message || '已送出重新開機指令！');
+                        } catch (e) {
+                            alert('指令送出失敗: ' + e.message);
+                        }
+                    }
+                };
+                
+                const fetchConfigs = async () => {
+                    try {
+                        const res = await fetch('/api/configs');
+                        savedConfigs.value = await res.json();
+                    } catch (e) {
+                        console.error("Failed to fetch configs", e);
+                    }
+                };
+
+                const saveConfig = async () => {
+                    if (!newConfigName.value.trim()) {
+                        alert("請輸入設定檔名稱");
+                        return;
+                    }
+                    try {
+                        const res = await fetch('/api/configs', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: newConfigName.value.trim() })
+                        });
+                        if (res.ok) {
+                            alert("設定檔儲存成功！");
+                            newConfigName.value = "";
+                            await fetchConfigs();
+                        } else {
+                            alert("儲存失敗");
+                        }
+                    } catch (e) {
+                        alert("錯誤: " + e.message);
+                    }
+                };
+
+                const loadConfig = async (cfg) => {
+                    if (confirm(`⚠️ 警告：即將載入設定檔「${cfg.name}」。\n這將會完全覆蓋目前的 RS485 群組、設備、指令與通訊設定。\n確定要繼續嗎？`)) {
+                        try {
+                            const res = await fetch(`/api/configs/${cfg.id}/load`, { method: 'POST' });
+                            if (res.ok) {
+                                alert("設定檔已成功載入還原！網頁即將重新整理以套用新設定。");
+                                window.location.reload();
+                            } else {
+                                alert("載入失敗");
+                            }
+                        } catch (e) {
+                            alert("錯誤: " + e.message);
+                        }
+                    }
+                };
+
+                const deleteConfig = async (cfg) => {
+                    if (confirm(`確定要刪除設定檔「${cfg.name}」嗎？`)) {
+                        try {
+                            const res = await fetch(`/api/configs/${cfg.id}`, { method: 'DELETE' });
+                            if (res.ok) {
+                                await fetchConfigs();
+                            }
+                        } catch (e) {
+                            alert("刪除錯誤: " + e.message);
+                        }
+                    }
+                };
 
                 return {
-                    loading, activeTab, sysSettings, groups, ports, wifiList, wifiScanned, commandsList,
+                    loading, activeTab, sysSettings, groups, ports, wifiList, wifiScanned, commandsList, wifiStatus, wifiProfiles,
+                    systemLogs, autoRefreshLogs, fetchSystemLogs, toggleAutoRefreshLogs,
+                    savedConfigs, newConfigName, saveConfig, loadConfig, deleteConfig,
                     fetchPorts, saveSysSettings, saveGroup, addDevice, removeDevice, getModbusHex,
                     saveCommands, testConnection, addCommand, removeCommand, applyCommandTemplate,
-                    scanWifi, connectWifi, logout
+                    scanWifi, connectWifi, fetchWifiStatus, hasProfile, deleteProfile, toggleAuto, editProfile, logout, rebootSystem,
+                    tsStatus, tsAuthKey,
+                    fetchTailscaleStatus,
+                    installTailscale,
+                    uninstallTailscale,
+                    tailscaleUp,
+                    tailscaleDown
                 };
             }
         }).mount('#app');

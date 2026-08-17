@@ -3,6 +3,9 @@
 TARGET_DIR="/home/cys/prog/RS485_SYSTEM"
 cd $TARGET_DIR
 
+echo "Installing system dependencies..."
+sudo apt-get update && sudo apt-get install -y gcc python3-dev
+
 echo "Setting up Python virtual environment..."
 python3 -m venv venv
 source venv/bin/activate

@@ -32,7 +32,8 @@ def init_db():
         mqtt_upload_on_change BOOLEAN DEFAULT 1,
         mqtt_upload_change_percent REAL DEFAULT 5.0,
         mqtt_upload_on_timer BOOLEAN DEFAULT 1,
-        mqtt_upload_interval INTEGER DEFAULT 60
+        mqtt_upload_interval INTEGER DEFAULT 60,
+        mqtt_use_mac_prefix INTEGER DEFAULT 0
     )
     ''')
 
@@ -56,6 +57,11 @@ def init_db():
         cursor.execute('ALTER TABLE system_settings ADD COLUMN mqtt_upload_change_percent REAL DEFAULT 5.0')
         cursor.execute('ALTER TABLE system_settings ADD COLUMN mqtt_upload_on_timer BOOLEAN DEFAULT 1')
         cursor.execute('ALTER TABLE system_settings ADD COLUMN mqtt_upload_interval INTEGER DEFAULT 60')
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute('ALTER TABLE system_settings ADD COLUMN mqtt_use_mac_prefix INTEGER DEFAULT 0')
     except sqlite3.OperationalError:
         pass
 
@@ -171,6 +177,27 @@ def init_db():
         device_id INTEGER,
         value REAL,
         FOREIGN KEY (device_id) REFERENCES rs485_devices(id)
+    )
+    ''')
+
+    # WiFi Profiles Table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS wifi_profiles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ssid TEXT UNIQUE NOT NULL,
+        password TEXT,
+        is_auto_reconnect BOOLEAN DEFAULT 1,
+        last_connected_at DATETIME
+    )
+    ''')
+
+    # Saved Configs Table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS saved_configs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        config_data TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
     ''')
 

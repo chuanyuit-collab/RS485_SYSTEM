@@ -232,7 +232,12 @@ def poll_devices():
                     mqtt_client.loop_stop()
                 conn.close()
                 return
-            client = ModbusSerialClient(method='rtu', port=port, baudrate=9600, timeout=1)
+            try:
+                client = ModbusSerialClient(port=port, baudrate=9600, timeout=1)
+            except TypeError:
+                # Fallback for older versions if needed
+                client = ModbusSerialClient(method='rtu', port=port, baudrate=9600, timeout=1)
+            
             if not client.connect():
                 print(f"Failed to connect to {port}")
                 if mqtt_client:
@@ -341,7 +346,18 @@ def poll_devices():
                                 # Publish to MQTT
                                 if mqtt_client and should_publish:
                                     from mqtt_client import publish_with_client
-                                    topic = f"{sys_set['mqtt_topic']}/{group['name']}/{dev['slave_id']}"
+                                    
+                                    topic_prefix = sys_set.get('mqtt_topic', '')
+                                    if sys_set.get('mqtt_use_mac_prefix', 0):
+                                        import uuid
+                                        mac = hex(uuid.getnode())[2:].upper()
+                                        if topic_prefix:
+                                            topic_prefix = f"{mac}/{topic_prefix}"
+                                        else:
+                                            topic_prefix = mac
+                                            
+                                    topic = f"{topic_prefix}/{group['name']}/{dev['slave_id']}" if topic_prefix else f"{group['name']}/{dev['slave_id']}"
+                                    
                                     payload = {
                                         "device_id": dev['id'],
                                         "slave_id": dev['slave_id'],
@@ -367,7 +383,18 @@ def poll_devices():
                                 # Publish to MQTT
                                 if mqtt_client and should_publish:
                                     from mqtt_client import publish_with_client
-                                    topic = f"{sys_set['mqtt_topic']}/{group['name']}/{dev['slave_id']}"
+                                    
+                                    topic_prefix = sys_set.get('mqtt_topic', '')
+                                    if sys_set.get('mqtt_use_mac_prefix', 0):
+                                        import uuid
+                                        mac = hex(uuid.getnode())[2:].upper()
+                                        if topic_prefix:
+                                            topic_prefix = f"{mac}/{topic_prefix}"
+                                        else:
+                                            topic_prefix = mac
+                                            
+                                    topic = f"{topic_prefix}/{group['name']}/{dev['slave_id']}" if topic_prefix else f"{group['name']}/{dev['slave_id']}"
+                                    
                                     payload = {
                                         "device_id": dev['id'],
                                         "slave_id": dev['slave_id'],

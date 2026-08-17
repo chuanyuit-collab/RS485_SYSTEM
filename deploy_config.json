@@ -1,5 +1,5 @@
 {
-    "pi_host": "192.168.234.145",
+    "pi_host": "100.115.218.94",
     "pi_user": "cys",
     "pi_pass": "cyc12345",
     "target_dir": "/home/cys/prog/RS485_SYSTEM"

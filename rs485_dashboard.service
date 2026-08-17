@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=cys
+User=root
 WorkingDirectory=/home/cys/prog/RS485_SYSTEM/backend
 ExecStart=/home/cys/prog/RS485_SYSTEM/venv/bin/python main.py
 Restart=always

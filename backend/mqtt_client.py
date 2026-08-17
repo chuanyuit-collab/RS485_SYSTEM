@@ -10,7 +10,8 @@ def get_mqtt_client(host, port, user, password):
         
         # Use TLS for common secure ports
         if port in [8883, 8884]:
-            client.tls_set(tls_version=ssl.PROTOCOL_TLS)
+            import certifi
+            client.tls_set(ca_certs=certifi.where(), tls_version=ssl.PROTOCOL_TLS)
             
         client.connect(host, port, 5)
         return client
