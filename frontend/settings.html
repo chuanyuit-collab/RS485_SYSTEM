@@ -967,10 +967,19 @@
 
                 const addDevice = (group) => {
                     if (!group.devices) group.devices = [];
+                    let defaultAddr = 0;
+                    let defaultCount = 1;
+                    if (group.command_name) {
+                        const c = commandsList.value.find(cmd => cmd.name === group.command_name);
+                        if (c) {
+                            defaultAddr = c.register_address || 0;
+                            defaultCount = c.register_count || 1;
+                        }
+                    }
                     group.devices.push({
                         slave_id: 1,
-                        register_address: 0,
-                        register_count: 1,
+                        register_address: defaultAddr,
+                        register_count: defaultCount,
                         irat: 1.0,
                         urat: 1.0
                     });
