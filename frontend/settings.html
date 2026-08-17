@@ -114,6 +114,44 @@
                 </div>
 
                 <div class="grid-2">
+                    <div class="form-group">
+                        <label>Baud Rate (鮑率)</label>
+                        <select v-model.number="sysSettings.serial_baudrate">
+                            <option :value="9600">9600</option>
+                            <option :value="19200">19200</option>
+                            <option :value="38400">38400</option>
+                            <option :value="57600">57600</option>
+                            <option :value="115200">115200</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Data Bits (資料位元)</label>
+                        <select v-model.number="sysSettings.serial_bytesize">
+                            <option :value="7">7</option>
+                            <option :value="8">8</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Parity (同位元檢查)</label>
+                        <select v-model="sysSettings.serial_parity">
+                            <option value="N">None (N)</option>
+                            <option value="E">Even (E)</option>
+                            <option value="O">Odd (O)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Stop Bits (停止位元)</label>
+                        <select v-model.number="sysSettings.serial_stopbits">
+                            <option :value="1">1</option>
+                            <option :value="2">2</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid-2">
                     <!-- MQTT -->
                     <div>
                         <h3 style="margin: 1rem 0;">MQTT 設定</h3>
@@ -434,7 +472,8 @@
                         </div>
                     </div>
                     
-                    <div style="text-align: right; margin-top: 1rem;">
+                    <div style="text-align: right; margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                        <button class="btn" @click="testGroupConnection(group)" style="background-color: var(--accent-color); color: white;">連線測試 (Test)</button>
                         <button class="btn btn-primary" @click="saveGroup(group)">儲存群組設定</button>
                     </div>
                 </div>
@@ -735,6 +774,10 @@
                         data.mqtt_upload_on_change = !!data.mqtt_upload_on_change;
                         data.mqtt_upload_on_timer = !!data.mqtt_upload_on_timer;
                         data.mqtt_use_mac_prefix = !!data.mqtt_use_mac_prefix;
+                        data.serial_baudrate = data.serial_baudrate || 9600;
+                        data.serial_bytesize = data.serial_bytesize || 8;
+                        data.serial_parity = data.serial_parity || 'N';
+                        data.serial_stopbits = data.serial_stopbits || 1;
                         sysSettings.value = data;
                         
                         // Parse recipients
@@ -864,6 +907,24 @@
                         const result = await res.json();
                         if (res.ok) {
                             alert('✅ ' + result.message);
+                        } else {
+                            alert('❌ 測試失敗: \n' + result.message);
+                        }
+                    } catch (e) {
+                        alert('❌ 測試發生錯誤: \n' + e.message);
+                    }
+                };
+
+                const testGroupConnection = async (group) => {
+                    try {
+                        const res = await fetch('/api/test_rs485_group', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(group)
+                        });
+                        const result = await res.json();
+                        if (res.ok) {
+                            alert('✅ ' + result.message + '\n\n解析結果: ' + result.data + '\n原始資料: ' + JSON.stringify(result.raw));
                         } else {
                             alert('❌ 測試失敗: \n' + result.message);
                         }
@@ -1227,7 +1288,7 @@
                     systemLogs, autoRefreshLogs, fetchSystemLogs, toggleAutoRefreshLogs,
                     savedConfigs, newConfigName, saveConfig, loadConfig, deleteConfig, telegramRecipientsList,
                     fetchPorts, saveSysSettings, saveGroup, addDevice, removeDevice, getModbusHex,
-                    saveCommands, testConnection, addCommand, removeCommand, applyCommandTemplate,
+                    saveCommands, testConnection, testGroupConnection, addCommand, removeCommand, applyCommandTemplate,
                     scanWifi, connectWifi, fetchWifiStatus, hasProfile, deleteProfile, toggleAuto, editProfile, logout, rebootSystem,
                     tsStatus, tsAuthKey,
                     fetchTailscaleStatus,

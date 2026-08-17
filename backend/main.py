@@ -230,6 +230,10 @@ class SystemSettingsUpdate(BaseModel):
     mqtt_upload_on_timer: bool
     mqtt_upload_interval: int
     mqtt_use_mac_prefix: bool
+    serial_baudrate: int
+    serial_bytesize: int
+    serial_parity: str
+    serial_stopbits: int
 
 @app.post("/api/system_settings")
 def update_system_settings(settings: SystemSettingsUpdate, request: Request):
@@ -242,13 +246,15 @@ def update_system_settings(settings: SystemSettingsUpdate, request: Request):
             mqtt_enabled=?, mqtt_host=?, mqtt_port=?, mqtt_user=?, mqtt_pass=?, mqtt_topic=?,
             telegram_enabled=?, telegram_boot_notify=?, telegram_token=?, telegram_chat_id=?, telegram_recipients=?,
             polling_interval=?, serial_port=?, simulation_mode=?,
-            mqtt_upload_on_change=?, mqtt_upload_change_percent=?, mqtt_upload_on_timer=?, mqtt_upload_interval=?, mqtt_use_mac_prefix=?
+            mqtt_upload_on_change=?, mqtt_upload_change_percent=?, mqtt_upload_on_timer=?, mqtt_upload_interval=?, mqtt_use_mac_prefix=?,
+            serial_baudrate=?, serial_bytesize=?, serial_parity=?, serial_stopbits=?
         WHERE id=1
     ''', (
         settings.mqtt_enabled, settings.mqtt_host, settings.mqtt_port, settings.mqtt_user, settings.mqtt_pass, settings.mqtt_topic,
         settings.telegram_enabled, settings.telegram_boot_notify, settings.telegram_token, settings.telegram_chat_id, settings.telegram_recipients,
         settings.polling_interval, settings.serial_port, settings.simulation_mode,
-        settings.mqtt_upload_on_change, settings.mqtt_upload_change_percent, settings.mqtt_upload_on_timer, settings.mqtt_upload_interval, settings.mqtt_use_mac_prefix
+        settings.mqtt_upload_on_change, settings.mqtt_upload_change_percent, settings.mqtt_upload_on_timer, settings.mqtt_upload_interval, settings.mqtt_use_mac_prefix,
+        settings.serial_baudrate, settings.serial_bytesize, settings.serial_parity, settings.serial_stopbits
     ))
     conn.commit()
     conn.close()
@@ -329,7 +335,14 @@ def test_connection(req: TestConnectionRequest, request: Request):
     if test_type == "serial":
         try:
             import serial
-            s = serial.Serial(settings.serial_port, 9600, timeout=1)
+            s = serial.Serial(
+                settings.serial_port, 
+                baudrate=settings.serial_baudrate, 
+                bytesize=settings.serial_bytesize, 
+                parity=settings.serial_parity, 
+                stopbits=settings.serial_stopbits, 
+                timeout=1
+            )
             s.close()
             return {"status": "success", "message": f"Serial port {settings.serial_port} opened successfully."}
         except Exception as e:
@@ -478,6 +491,68 @@ def update_rs485_group(group: GroupUpdate, request: Request):
     conn.commit()
     conn.close()
     return {"status": "success"}
+
+@app.post("/api/test_rs485_group")
+def test_rs485_group(group: GroupUpdate, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if not group.devices:
+        return JSONResponse(status_code=400, content={"status": "error", "message": "此群組沒有設定任何設備"})
+        
+    dev = group.devices[0] # Test the first device
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT serial_port, serial_baudrate, serial_bytesize, serial_parity, serial_stopbits FROM system_settings WHERE id=1")
+    sys_set = cursor.fetchone()
+    conn.close()
+    
+    if not sys_set or not sys_set['serial_port']:
+        return JSONResponse(status_code=400, content={"status": "error", "message": "尚未設定 Serial Port"})
+        
+    from pymodbus.client import ModbusSerialClient
+    from rs485_worker import parse_payload
+    
+    client = None
+    try:
+        try:
+            client = ModbusSerialClient(
+                port=sys_set['serial_port'], 
+                baudrate=sys_set['serial_baudrate'], 
+                bytesize=sys_set['serial_bytesize'], 
+                parity=sys_set['serial_parity'], 
+                stopbits=sys_set['serial_stopbits'], 
+                timeout=1
+            )
+        except TypeError:
+            # Fallback for older pymodbus versions
+            client = ModbusSerialClient(
+                method='rtu', 
+                port=sys_set['serial_port'], 
+                baudrate=sys_set['serial_baudrate'], 
+                timeout=1
+            )
+            
+        if not client.connect():
+            return JSONResponse(status_code=400, content={"status": "error", "message": f"無法開啟 {sys_set['serial_port']}"})
+            
+        result = None
+        if group.command == 'read_holding_registers':
+            result = client.read_holding_registers(address=dev.register_address, count=dev.register_count, slave=dev.slave_id)
+        elif group.command == 'read_input_registers':
+            result = client.read_input_registers(address=dev.register_address, count=dev.register_count, slave=dev.slave_id)
+        else:
+            return JSONResponse(status_code=400, content={"status": "error", "message": f"不支援的指令: {group.command}"})
+            
+        if result and not result.isError():
+            val = parse_payload(result.registers, group.parse_method, dev.irat, dev.urat)
+            return {"status": "success", "message": "連線測試成功", "data": val, "raw": result.registers}
+        else:
+            return JSONResponse(status_code=400, content={"status": "error", "message": "連線逾時或設備無回應 (Modbus Error)"})
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"status": "error", "message": str(e)})
+    finally:
+        if client:
+            client.close()
 
 # --- Advanced Wi-Fi Management ---
 @app.get("/api/wifi/status")

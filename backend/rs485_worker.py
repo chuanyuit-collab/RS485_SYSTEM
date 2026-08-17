@@ -233,11 +233,29 @@ def poll_devices():
                     mqtt_client.loop_stop()
                 conn.close()
                 return
+            
+            baud = sys_set.get('serial_baudrate', 9600)
+            bsize = sys_set.get('serial_bytesize', 8)
+            parity = sys_set.get('serial_parity', 'N')
+            stopb = sys_set.get('serial_stopbits', 1)
+
             try:
-                client = ModbusSerialClient(port=port, baudrate=9600, timeout=1)
+                client = ModbusSerialClient(
+                    port=port, 
+                    baudrate=baud, 
+                    bytesize=bsize, 
+                    parity=parity, 
+                    stopbits=stopb, 
+                    timeout=1
+                )
             except TypeError:
                 # Fallback for older versions if needed
-                client = ModbusSerialClient(method='rtu', port=port, baudrate=9600, timeout=1)
+                client = ModbusSerialClient(
+                    method='rtu', 
+                    port=port, 
+                    baudrate=baud, 
+                    timeout=1
+                )
             
             if not client.connect():
                 print(f"Failed to connect to {port}")

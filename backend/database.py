@@ -34,7 +34,11 @@ def init_db():
         mqtt_upload_change_percent REAL DEFAULT 5.0,
         mqtt_upload_on_timer BOOLEAN DEFAULT 1,
         mqtt_upload_interval INTEGER DEFAULT 60,
-        mqtt_use_mac_prefix INTEGER DEFAULT 0
+        mqtt_use_mac_prefix INTEGER DEFAULT 0,
+        serial_baudrate INTEGER DEFAULT 9600,
+        serial_bytesize INTEGER DEFAULT 8,
+        serial_parity TEXT DEFAULT 'N',
+        serial_stopbits INTEGER DEFAULT 1
     )
     ''')
 
@@ -68,6 +72,14 @@ def init_db():
 
     try:
         cursor.execute("ALTER TABLE system_settings ADD COLUMN telegram_recipients TEXT DEFAULT '[]'")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE system_settings ADD COLUMN serial_baudrate INTEGER DEFAULT 9600")
+        cursor.execute("ALTER TABLE system_settings ADD COLUMN serial_bytesize INTEGER DEFAULT 8")
+        cursor.execute("ALTER TABLE system_settings ADD COLUMN serial_parity TEXT DEFAULT 'N'")
+        cursor.execute("ALTER TABLE system_settings ADD COLUMN serial_stopbits INTEGER DEFAULT 1")
     except sqlite3.OperationalError:
         pass
 
