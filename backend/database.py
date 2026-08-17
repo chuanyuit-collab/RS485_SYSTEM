@@ -26,6 +26,7 @@ def init_db():
         telegram_boot_notify BOOLEAN DEFAULT 1,
         telegram_token TEXT DEFAULT '',
         telegram_chat_id TEXT DEFAULT '',
+        telegram_recipients TEXT DEFAULT '[]',
         polling_interval INTEGER DEFAULT 5,
         serial_port TEXT DEFAULT '',
         simulation_mode INTEGER DEFAULT 0,
@@ -62,6 +63,11 @@ def init_db():
 
     try:
         cursor.execute('ALTER TABLE system_settings ADD COLUMN mqtt_use_mac_prefix INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE system_settings ADD COLUMN telegram_recipients TEXT DEFAULT '[]'")
     except sqlite3.OperationalError:
         pass
 

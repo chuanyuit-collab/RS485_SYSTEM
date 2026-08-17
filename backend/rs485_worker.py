@@ -2,6 +2,7 @@ import time
 import random
 import sqlite3
 import struct
+import json
 from pymodbus.client import ModbusSerialClient
 from database import get_db_connection
 from telegram_bot import send_telegram_message
@@ -377,8 +378,23 @@ def poll_devices():
                                 if val < group['limit_min'] or val > group['limit_max']:
                                     msg = f"⚠️ ALERT: Device {dev['id']} (Group: {group['name']}) value {val} out of bounds ({group['limit_min']} - {group['limit_max']})"
                                     print(msg)
-                                    if sys_set['telegram_enabled'] and sys_set['telegram_token'] and sys_set['telegram_chat_id']:
-                                        send_telegram_message(sys_set['telegram_token'], sys_set['telegram_chat_id'], msg)
+                                    if sys_set.get('telegram_enabled'):
+                                        recipients = []
+                                        try:
+                                            recipients = json.loads(sys_set.get('telegram_recipients', '[]'))
+                                        except:
+                                            pass
+                                        
+                                        sent_any = False
+                                        if isinstance(recipients, list) and len(recipients) > 0:
+                                            for r in recipients:
+                                                if r.get('enabled') and r.get('token') and r.get('chat_id'):
+                                                    send_telegram_message(r['token'], r['chat_id'], msg)
+                                                    sent_any = True
+                                                    
+                                        if not sent_any:
+                                            if sys_set.get('telegram_token') and sys_set.get('telegram_chat_id'):
+                                                send_telegram_message(sys_set['telegram_token'], sys_set['telegram_chat_id'], msg)
                                 
                                 # Publish to MQTT
                                 if mqtt_client and should_publish:

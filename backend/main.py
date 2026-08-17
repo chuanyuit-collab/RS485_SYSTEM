@@ -81,12 +81,28 @@ def startup_event():
         from telegram_bot import send_boot_notification
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT telegram_enabled, telegram_boot_notify, telegram_token, telegram_chat_id FROM system_settings WHERE id=1")
+        cursor.execute("SELECT telegram_enabled, telegram_boot_notify, telegram_token, telegram_chat_id, telegram_recipients FROM system_settings WHERE id=1")
         sys_set = cursor.fetchone()
         conn.close()
         
-        if sys_set and sys_set['telegram_enabled'] and sys_set['telegram_boot_notify'] and sys_set['telegram_token'] and sys_set['telegram_chat_id']:
-            send_boot_notification(sys_set['telegram_token'], sys_set['telegram_chat_id'])
+        if sys_set and sys_set['telegram_enabled'] and sys_set['telegram_boot_notify']:
+            import json
+            recipients = []
+            try:
+                recipients = json.loads(sys_set['telegram_recipients'] or '[]')
+            except:
+                pass
+            
+            sent_any = False
+            if isinstance(recipients, list) and len(recipients) > 0:
+                for r in recipients:
+                    if r.get('enabled') and r.get('token') and r.get('chat_id'):
+                        send_boot_notification(r['token'], r['chat_id'])
+                        sent_any = True
+                        
+            if not sent_any:
+                if sys_set['telegram_token'] and sys_set['telegram_chat_id']:
+                    send_boot_notification(sys_set['telegram_token'], sys_set['telegram_chat_id'])
     except Exception as e:
         print(f"Failed to send boot notification: {e}")
 
@@ -205,6 +221,7 @@ class SystemSettingsUpdate(BaseModel):
     telegram_boot_notify: bool
     telegram_token: str
     telegram_chat_id: str
+    telegram_recipients: str
     polling_interval: int
     serial_port: str
     simulation_mode: bool
@@ -223,13 +240,13 @@ def update_system_settings(settings: SystemSettingsUpdate, request: Request):
     cursor.execute('''
         UPDATE system_settings SET
             mqtt_enabled=?, mqtt_host=?, mqtt_port=?, mqtt_user=?, mqtt_pass=?, mqtt_topic=?,
-            telegram_enabled=?, telegram_boot_notify=?, telegram_token=?, telegram_chat_id=?,
+            telegram_enabled=?, telegram_boot_notify=?, telegram_token=?, telegram_chat_id=?, telegram_recipients=?,
             polling_interval=?, serial_port=?, simulation_mode=?,
             mqtt_upload_on_change=?, mqtt_upload_change_percent=?, mqtt_upload_on_timer=?, mqtt_upload_interval=?, mqtt_use_mac_prefix=?
         WHERE id=1
     ''', (
         settings.mqtt_enabled, settings.mqtt_host, settings.mqtt_port, settings.mqtt_user, settings.mqtt_pass, settings.mqtt_topic,
-        settings.telegram_enabled, settings.telegram_boot_notify, settings.telegram_token, settings.telegram_chat_id,
+        settings.telegram_enabled, settings.telegram_boot_notify, settings.telegram_token, settings.telegram_chat_id, settings.telegram_recipients,
         settings.polling_interval, settings.serial_port, settings.simulation_mode,
         settings.mqtt_upload_on_change, settings.mqtt_upload_change_percent, settings.mqtt_upload_on_timer, settings.mqtt_upload_interval, settings.mqtt_use_mac_prefix
     ))
@@ -370,16 +387,49 @@ def test_connection(req: TestConnectionRequest, request: Request):
     elif test_type == "telegram":
         try:
             import requests
-            url = f"https://api.telegram.org/bot{settings.telegram_token}/sendMessage"
-            payload = {
-                "chat_id": settings.telegram_chat_id,
-                "text": "🔔 系統通訊測試成功！\n\n您的 RS485 儀表板已經可以正常發送推播通知。"
-            }
-            resp = requests.post(url, json=payload, timeout=5)
-            if resp.status_code == 200:
-                return {"status": "success", "message": "Telegram message sent successfully."}
+            import json
+            recipients = []
+            try:
+                recipients = json.loads(settings.telegram_recipients or '[]')
+            except:
+                pass
+            
+            sent_any = False
+            errors = []
+            if isinstance(recipients, list) and len(recipients) > 0:
+                for r in recipients:
+                    if r.get('enabled') and r.get('token') and r.get('chat_id'):
+                        url = f"https://api.telegram.org/bot{r.get('token')}/sendMessage"
+                        payload = {
+                            "chat_id": r.get('chat_id'),
+                            "text": f"🔔 [測試] 系統通訊測試成功！\n\n聯絡人: {r.get('name') or '未命名'}\n您的 RS485 儀表板已經可以正常發送推播通知。"
+                        }
+                        resp = requests.post(url, json=payload, timeout=5)
+                        if resp.status_code == 200:
+                            sent_any = True
+                        else:
+                            errors.append(f"{r.get('name') or 'Unnamed'}: {resp.text}")
+            
+            if not sent_any:
+                if settings.telegram_token and settings.telegram_chat_id:
+                    url = f"https://api.telegram.org/bot{settings.telegram_token}/sendMessage"
+                    payload = {
+                        "chat_id": settings.telegram_chat_id,
+                        "text": "🔔 [測試] 系統通訊測試成功！\n\n您的 RS485 儀表板已經可以正常發送推播通知。"
+                    }
+                    resp = requests.post(url, json=payload, timeout=5)
+                    if resp.status_code == 200:
+                        sent_any = True
+                    else:
+                        errors.append(f"Legacy: {resp.text}")
+            
+            if sent_any:
+                msg = "Telegram message sent successfully."
+                if errors:
+                    msg += " Errors: " + "; ".join(errors)
+                return {"status": "success", "message": msg}
             else:
-                return JSONResponse(status_code=400, content={"status": "error", "message": f"Telegram API Error: {resp.text}"})
+                return JSONResponse(status_code=400, content={"status": "error", "message": f"Telegram API Error: {'; '.join(errors) if errors else 'No active recipients configured.'}"})
         except Exception as e:
             return JSONResponse(status_code=400, content={"status": "error", "message": f"Telegram Error: {str(e)}"})
             
