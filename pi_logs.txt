@@ -1,0 +1,200 @@
+Aug 17 22:54:55 pi-2w-0815 python[2949]: INFO:     100.92.69.72:55970 - "GET /api/configs HTTP/1.1" 200 OK
+Aug 17 22:54:55 pi-2w-0815 python[2949]: INFO:     100.92.69.72:55970 - "GET /api/tailscale/status HTTP/1.1" 200 OK
+Aug 17 22:55:01 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 2 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:55:01 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63314 - "POST /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:55:05 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:55:05 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63314 - "GET / HTTP/1.1" 200 OK
+Aug 17 22:55:05 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63314 - "GET /static/styles.css?v=2 HTTP/1.1" 304 Not Modified
+Aug 17 22:55:05 pi-2w-0815 python[2949]: INFO:     100.92.69.72:57830 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:55:05 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63314 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:55:05 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63314 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:55:10 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:55:10 pi-2w-0815 python[2949]: INFO:     100.92.69.72:57830 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:55:10 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63314 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:55:10 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63314 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:55:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:55:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:51380 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:55:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:55:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:55:21 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:55:21 pi-2w-0815 python[2949]: INFO:     100.92.69.72:51380 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:55:21 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:55:21 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:55:26 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:55:26 pi-2w-0815 python[2949]: INFO:     100.92.69.72:51380 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:55:26 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:55:26 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:55:31 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:55:31 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:55:31 pi-2w-0815 python[2949]: INFO:     100.92.69.72:54233 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:55:31 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:55:36 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:55:36 pi-2w-0815 python[2949]: INFO:     100.92.69.72:54233 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:55:36 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:55:36 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:55:41 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:55:41 pi-2w-0815 python[2949]: INFO:     100.92.69.72:54233 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:55:41 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:55:41 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:55:46 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:55:46 pi-2w-0815 python[2949]: INFO:     100.92.69.72:54233 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:55:46 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:55:46 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:55:51 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:55:51 pi-2w-0815 python[2949]: INFO:     100.92.69.72:54233 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:55:51 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:55:51 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:55:56 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:55:56 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:55:56 pi-2w-0815 python[2949]: INFO:     100.92.69.72:54233 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:55:56 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:56:01 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:56:01 pi-2w-0815 python[2949]: INFO:     100.92.69.72:54233 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:56:01 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:56:01 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:56:06 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:56:06 pi-2w-0815 python[2949]: INFO:     100.92.69.72:54233 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:56:06 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:56:06 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52313 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:56:12 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:56:12 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:56:12 pi-2w-0815 python[2949]: INFO:     100.92.69.72:57386 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:56:12 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:56:12 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:56:14 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:56:15 pi-2w-0815 python[2949]: INFO:     100.92.69.72:57386 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:56:15 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:56:15 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /api/history/3 HTTP/1.1" 200 OK
+Aug 17 22:56:18 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:56:18 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /settings HTTP/1.1" 200 OK
+Aug 17 22:56:18 pi-2w-0815 python[2949]: INFO:     100.92.69.72:57386 - "GET /static/styles.css?v=2 HTTP/1.1" 304 Not Modified
+Aug 17 22:56:18 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /api/system_settings HTTP/1.1" 200 OK
+Aug 17 22:56:18 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /api/rs485_commands HTTP/1.1" 200 OK
+Aug 17 22:56:18 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:56:18 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /api/ports HTTP/1.1" 200 OK
+Aug 17 22:56:19 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /api/wifi/status HTTP/1.1" 200 OK
+Aug 17 22:56:19 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /api/wifi/profiles HTTP/1.1" 200 OK
+Aug 17 22:56:19 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /api/configs HTTP/1.1" 200 OK
+Aug 17 22:56:19 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "GET /api/tailscale/status HTTP/1.1" 200 OK
+Aug 17 22:56:23 pi-2w-0815 python[2949]: [Errno 11] Could not exclusively lock port /dev/ttyUSB0: [Errno 11] Resource temporarily unavailable
+Aug 17 22:56:23 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:56:23 pi-2w-0815 python[2949]: INFO:     100.92.69.72:63298 - "POST /api/test_rs485_group HTTP/1.1" 400 Bad Request
+Aug 17 22:56:31 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:56:31 pi-2w-0815 python[2949]: INFO:     100.92.69.72:53010 - "POST /api/test_connection HTTP/1.1" 200 OK
+Aug 17 22:56:34 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.6 out of bounds (0.0 - 0.0)
+Aug 17 22:56:34 pi-2w-0815 python[2949]: INFO:     100.92.69.72:53010 - "POST /api/system_settings HTTP/1.1" 200 OK
+Aug 17 22:56:37 pi-2w-0815 python[2949]: INFO:     100.92.69.72:53010 - "POST /api/test_rs485_group HTTP/1.1" 200 OK
+Aug 17 22:56:53 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:56:53 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:56:53 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:56:53 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 3 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:56:53 pi-2w-0815 python[2949]: INFO:     100.92.69.72:65081 - "POST /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:56:59 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:56:59 pi-2w-0815 python[2949]: INFO:     100.92.69.72:50709 - "GET / HTTP/1.1" 200 OK
+Aug 17 22:57:00 pi-2w-0815 python[2949]: INFO:     100.92.69.72:50709 - "GET /static/styles.css?v=2 HTTP/1.1" 304 Not Modified
+Aug 17 22:57:00 pi-2w-0815 python[2949]: INFO:     100.92.69.72:59752 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:57:00 pi-2w-0815 python[2949]: INFO:     100.92.69.72:50709 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:57:00 pi-2w-0815 python[2949]: INFO:     100.92.69.72:50709 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:57:01 pi-2w-0815 python[2949]: INFO:     100.92.69.72:50709 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:57:05 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:57:05 pi-2w-0815 python[2949]: INFO:     100.92.69.72:59752 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:57:05 pi-2w-0815 python[2949]: INFO:     100.92.69.72:50709 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:57:05 pi-2w-0815 python[2949]: INFO:     100.92.69.72:50709 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:57:10 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:57:10 pi-2w-0815 python[2949]: INFO:     100.92.69.72:49517 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:57:10 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:57:10 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:57:15 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:57:15 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:57:15 pi-2w-0815 python[2949]: INFO:     100.92.69.72:53223 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:57:15 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:57:20 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:57:20 pi-2w-0815 python[2949]: INFO:     100.92.69.72:53223 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:57:20 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:57:20 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:57:25 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:57:25 pi-2w-0815 python[2949]: INFO:     100.92.69.72:53223 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:57:25 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:57:25 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:57:30 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:57:30 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:57:30 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52941 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:57:30 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:57:35 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:57:35 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52941 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:57:35 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:57:35 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:57:40 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:57:40 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52941 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:57:40 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:57:40 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:57:45 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:57:45 pi-2w-0815 python[2949]: INFO:     100.92.69.72:52941 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:57:45 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:57:45 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:57:50 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:57:50 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:57:50 pi-2w-0815 python[2949]: INFO:     100.92.69.72:53345 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:57:50 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:57:55 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:57:55 pi-2w-0815 python[2949]: INFO:     100.92.69.72:53345 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:57:55 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:57:55 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:58:00 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:58:00 pi-2w-0815 python[2949]: INFO:     100.92.69.72:53345 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:58:00 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:58:00 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:58:05 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:58:05 pi-2w-0815 python[2949]: INFO:     100.92.69.72:53345 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:58:05 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:58:05 pi-2w-0815 python[2949]: INFO:     100.92.69.72:62156 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:58:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:58:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:58:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:54278 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:58:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:59955 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:58:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:59955 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 22:59:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:59:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:59:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:59:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:59:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:59:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:59:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:59:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:59:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:59:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:59:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:59:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 22:59:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:49185 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 22:59:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:50600 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 22:59:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:50600 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 23:00:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:00:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:00:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:00:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:00:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:00:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:00:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:00:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:00:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:00:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:00:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:00:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:00:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:54650 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 23:00:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:55023 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 23:00:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:55023 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 23:01:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:01:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:01:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:01:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:01:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:01:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:01:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:01:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:01:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:01:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:01:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:01:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:01:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:64976 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 23:01:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:56449 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 23:01:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:64976 - "GET /api/history/4 HTTP/1.1" 200 OK

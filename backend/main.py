@@ -780,13 +780,23 @@ def get_device_history(device_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT timestamp, value FROM historical_data
+        SELECT timestamp, value, value_str FROM historical_data
         WHERE device_id=? ORDER BY timestamp DESC LIMIT 100
     ''', (device_id,))
     rows = cursor.fetchall()
     conn.close()
-    # Return ascending order for charts
-    return [{"timestamp": row['timestamp'], "value": row['value']} for row in reversed(rows)]
+    
+    import json
+    result = []
+    for row in reversed(rows):
+        val = row['value']
+        if 'value_str' in row.keys() and row['value_str']:
+            try:
+                val = json.loads(row['value_str'])
+            except:
+                pass
+        result.append({"timestamp": row['timestamp'], "value": val})
+    return result
 
 # API to download CSV
 from fastapi.responses import StreamingResponse
@@ -795,7 +805,7 @@ def download_device_history(device_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT timestamp, value FROM historical_data
+        SELECT timestamp, value, value_str FROM historical_data
         WHERE device_id=? ORDER BY timestamp DESC LIMIT 10000
     ''', (device_id,))
     rows = cursor.fetchall()
@@ -805,7 +815,10 @@ def download_device_history(device_id: int):
     writer = csv.writer(output)
     writer.writerow(["Timestamp", "Value"])
     for row in rows:
-        writer.writerow([row['timestamp'], row['value']])
+        val = row['value']
+        if 'value_str' in row.keys() and row['value_str']:
+            val = row['value_str'] # Write string directly to CSV
+        writer.writerow([row['timestamp'], val])
 
     output.seek(0)
     return StreamingResponse(

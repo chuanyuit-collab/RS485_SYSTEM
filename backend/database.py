@@ -198,6 +198,11 @@ def init_db():
     )
     ''')
 
+    try:
+        cursor.execute("ALTER TABLE historical_data ADD COLUMN value_str TEXT")
+    except sqlite3.OperationalError:
+        pass
+
     # WiFi Profiles Table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS wifi_profiles (

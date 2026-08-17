@@ -933,7 +933,8 @@
                         });
                         const result = await res.json();
                         if (res.ok) {
-                            alert('✅ ' + result.message + '\n\n解析結果: ' + result.data + '\n原始資料: ' + JSON.stringify(result.raw));
+                            const parsedStr = typeof result.data === 'object' ? JSON.stringify(result.data) : result.data;
+                            alert('✅ ' + result.message + '\n\n解析結果: ' + parsedStr + '\n原始資料: ' + JSON.stringify(result.raw));
                         } else {
                             alert('❌ 測試失敗: \n' + result.message);
                         }

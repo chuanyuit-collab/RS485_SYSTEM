@@ -1,0 +1,154 @@
+[
+  {
+    "id": 1,
+    "name": "讀取數值 (Holding Int16)",
+    "command": "read_holding_registers",
+    "parse_method": "int16",
+    "register_address": 0,
+    "register_count": 1
+  },
+  {
+    "id": 2,
+    "name": "讀取狀態 (Input UInt16)",
+    "command": "read_input_registers",
+    "parse_method": "uint16",
+    "register_address": 0,
+    "register_count": 1
+  },
+  {
+    "id": 3,
+    "name": "流量計-瞬時流量",
+    "command": "read_holding_registers",
+    "parse_method": "float32_cdab_lmin",
+    "register_address": 4,
+    "register_count": 2
+  },
+  {
+    "id": 4,
+    "name": "流量計-净累積流量(浮點形式)",
+    "command": "read_holding_registers",
+    "parse_method": "flowmeter_net_flow",
+    "register_address": 114,
+    "register_count": 2
+  },
+  {
+    "id": 5,
+    "name": "流量計-供水温度/回水温度",
+    "command": "read_holding_registers",
+    "parse_method": "flowmeter_temps",
+    "register_address": 32,
+    "register_count": 4
+  },
+  {
+    "id": 6,
+    "name": "三相線電壓 (Va, Vb, Vc)",
+    "command": "read_holding_registers",
+    "parse_method": "pd666_voltage",
+    "register_address": 8192,
+    "register_count": 6
+  },
+  {
+    "id": 7,
+    "name": "三相線電流 (Ia, Ib, Ic)",
+    "command": "read_holding_registers",
+    "parse_method": "pd666_current",
+    "register_address": 8204,
+    "register_count": 6
+  },
+  {
+    "id": 8,
+    "name": "三相線有功功率 (Pa, Pb, Pc)",
+    "command": "read_holding_registers",
+    "parse_method": "pd666_active_power",
+    "register_address": 8212,
+    "register_count": 6
+  },
+  {
+    "id": 9,
+    "name": "三相線無功功率 (Qa, Qb, Qc)",
+    "command": "read_holding_registers",
+    "parse_method": "pd666_reactive_power",
+    "register_address": 8220,
+    "register_count": 6
+  },
+  {
+    "id": 10,
+    "name": "功率因數",
+    "command": "read_holding_registers",
+    "parse_method": "pd666_power_factor",
+    "register_address": 8234,
+    "register_count": 2
+  },
+  {
+    "id": 11,
+    "name": "頻率",
+    "command": "read_holding_registers",
+    "parse_method": "pd666_frequency",
+    "register_address": 8260,
+    "register_count": 2
+  },
+  {
+    "id": 12,
+    "name": "總有功功率需量",
+    "command": "read_holding_registers",
+    "parse_method": "pd666_demand",
+    "register_address": 8272,
+    "register_count": 2
+  },
+  {
+    "id": 13,
+    "name": "正向有功總電能",
+    "command": "read_holding_registers",
+    "parse_method": "pd666_epi",
+    "register_address": 4126,
+    "register_count": 2
+  },
+  {
+    "id": 14,
+    "name": "反向有功總電能",
+    "command": "read_holding_registers",
+    "parse_method": "pd666_epe",
+    "register_address": 4136,
+    "register_count": 2
+  },
+  {
+    "id": 15,
+    "name": "PH 讀值",
+    "command": "read_holding_registers",
+    "parse_method": "ph_sensor",
+    "register_address": 0,
+    "register_count": 1
+  },
+  {
+    "id": 16,
+    "name": "EC 讀值 (含溫度)",
+    "command": "read_holding_registers",
+    "parse_method": "ec_sensor",
+    "register_address": 0,
+    "register_count": 2
+  },
+  {
+    "id": 17,
+    "name": "ORP 讀值",
+    "command": "read_holding_registers",
+    "parse_method": "orp_sensor",
+    "register_address": 0,
+    "register_count": 1
+  },
+  {
+    "id": 18,
+    "name": "DO 讀值 (含溫度)",
+    "command": "read_holding_registers",
+    "parse_method": "do_sensor",
+    "register_address": 0,
+    "register_count": 4
+  },
+  {
+    "id": 19,
+    "name": "溫度感測器",
+    "command": "read_holding_registers",
+    "parse_method": "int16_div10",
+    "register_address": 0,
+    "register_count": 1
+  }
+]

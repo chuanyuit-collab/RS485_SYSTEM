@@ -1,0 +1,50 @@
+Aug 17 23:04:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:04:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:04:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:04:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:04:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:57263 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 23:04:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:61170 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 23:04:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:61170 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 23:05:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:05:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:05:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:05:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:05:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:05:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:05:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:05:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:05:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:05:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:05:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:05:16 pi-2w-0815 python[2949]: ⚠️ ALERT: Device 4 (Group: 回水溫度) value 28.5 out of bounds (0.0 - 0.0)
+Aug 17 23:05:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:54814 - "GET /api/system_status HTTP/1.1" 200 OK
+Aug 17 23:05:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:60010 - "GET /api/rs485_groups HTTP/1.1" 200 OK
+Aug 17 23:05:16 pi-2w-0815 python[2949]: INFO:     100.92.69.72:60010 - "GET /api/history/4 HTTP/1.1" 200 OK
+Aug 17 23:05:49 pi-2w-0815 python[848]: WARNING:  StatReload detected changes in 'database.py'. Reloading...
+Aug 17 23:05:49 pi-2w-0815 python[2949]: INFO:     Shutting down
+Aug 17 23:05:49 pi-2w-0815 python[2949]: INFO:     Waiting for application shutdown.
+Aug 17 23:05:49 pi-2w-0815 python[2949]: INFO:     Application shutdown complete.
+Aug 17 23:05:49 pi-2w-0815 python[2949]: INFO:     Finished server process [2949]
+Aug 17 23:05:52 pi-2w-0815 python[3221]: Traceback (most recent call last):
+Aug 17 23:05:52 pi-2w-0815 python[3221]:   File "<string>", line 1, in <module>
+Aug 17 23:05:52 pi-2w-0815 python[3221]:     from multiprocessing.spawn import spawn_main; spawn_main(tracker_fd=5, pipe_handle=7)
+Aug 17 23:05:52 pi-2w-0815 python[3221]:                                                   ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Aug 17 23:05:52 pi-2w-0815 python[3221]:   File "/usr/lib/python3.13/multiprocessing/spawn.py", line 122, in spawn_main
+Aug 17 23:05:52 pi-2w-0815 python[3221]:     exitcode = _main(fd, parent_sentinel)
+Aug 17 23:05:52 pi-2w-0815 python[3221]:   File "/usr/lib/python3.13/multiprocessing/spawn.py", line 131, in _main
+Aug 17 23:05:52 pi-2w-0815 python[3221]:     prepare(preparation_data)
+Aug 17 23:05:52 pi-2w-0815 python[3221]:     ~~~~~~~^^^^^^^^^^^^^^^^^^
+Aug 17 23:05:52 pi-2w-0815 python[3221]:   File "/usr/lib/python3.13/multiprocessing/spawn.py", line 246, in prepare
+Aug 17 23:05:52 pi-2w-0815 python[3221]:     _fixup_main_from_path(data['init_main_from_path'])
+Aug 17 23:05:52 pi-2w-0815 python[3221]:     ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Aug 17 23:05:52 pi-2w-0815 python[3221]:   File "/usr/lib/python3.13/multiprocessing/spawn.py", line 297, in _fixup_main_from_path
+Aug 17 23:05:52 pi-2w-0815 python[3221]:     main_content = runpy.run_path(main_path,
+Aug 17 23:05:52 pi-2w-0815 python[3221]:                                   run_name="__mp_main__")
+Aug 17 23:05:52 pi-2w-0815 python[3221]:   File "<frozen runpy>", line 287, in run_path
+Aug 17 23:05:52 pi-2w-0815 python[3221]:   File "<frozen runpy>", line 98, in _run_module_code
+Aug 17 23:05:52 pi-2w-0815 python[3221]:   File "<frozen runpy>", line 88, in _run_code
+Aug 17 23:05:52 pi-2w-0815 python[3221]:   File "/home/cys/prog/RS485_SYSTEM/backend/main.py", line 18, in <module>
+Aug 17 23:05:52 pi-2w-0815 python[3221]:     from rs485_worker import poll_devices
+Aug 17 23:05:52 pi-2w-0815 python[3221]:   File "/home/cys/prog/RS485_SYSTEM/backend/rs485_worker.py", line 475
+Aug 17 23:05:52 pi-2w-0815 python[3221]:     cursor.execute("SELECT * FROM rs485_groups")
+Aug 17 23:05:52 pi-2w-0815 python[3221]: SyntaxError: expected 'except' or 'finally' block
