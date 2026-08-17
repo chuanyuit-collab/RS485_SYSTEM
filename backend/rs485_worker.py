@@ -7,6 +7,11 @@ from pymodbus.client import ModbusSerialClient
 from database import get_db_connection
 from telegram_bot import send_telegram_message
 
+import threading
+
+# Global lock to prevent concurrent Modbus access
+rs485_lock = threading.Lock()
+
 # Global cache for MQTT advanced upload logic
 last_mqtt_upload_time = {}
 last_mqtt_upload_value = {}
@@ -240,30 +245,35 @@ def poll_devices():
             stopb = sys_set.get('serial_stopbits', 1)
 
             try:
-                client = ModbusSerialClient(
-                    port=port, 
-                    baudrate=baud, 
-                    bytesize=bsize, 
-                    parity=parity, 
-                    stopbits=stopb, 
-                    timeout=1
-                )
+                with rs485_lock:
+                    client = ModbusSerialClient(
+                        port=port, 
+                        baudrate=baud, 
+                        bytesize=bsize, 
+                        parity=parity, 
+                        stopbits=stopb, 
+                        timeout=1
+                    )
             except TypeError:
-                # Fallback for older versions if needed
-                client = ModbusSerialClient(
-                    method='rtu', 
-                    port=port, 
-                    baudrate=baud, 
-                    timeout=1
-                )
-            
-            if not client.connect():
-                print(f"Failed to connect to {port}")
-                if mqtt_client:
-                    mqtt_client.disconnect()
-                    mqtt_client.loop_stop()
-                conn.close()
-                return
+                # Fallback for older pymodbus versions
+                with rs485_lock:
+                    client = ModbusSerialClient(
+                        method='rtu', 
+                        port=port, 
+                        baudrate=baud, 
+                        bytesize=bsize, 
+                        parity=parity, 
+                        stopbits=stopb, 
+                        timeout=1
+                    )
+
+            with rs485_lock:
+                if not client.connect():
+                    if mqtt_client:
+                        mqtt_client.disconnect()
+                        mqtt_client.loop_stop()
+                    conn.close()
+                    return
             
         # Get active groups
         cursor.execute("SELECT * FROM rs485_groups")
@@ -287,49 +297,50 @@ def poll_devices():
                         result = MockResult()
                     else:
                         # Read holding registers (0x03)
-                        if group['command'] == 'read_holding_registers':
-                            try:
-                                result = client.read_holding_registers(
-                                    address=dev['register_address'],
-                                    count=dev['register_count'],
-                                    device_id=dev['slave_id']
-                                )
-                            except TypeError:
+                        with rs485_lock:
+                            if group['command'] == 'read_holding_registers':
                                 try:
                                     result = client.read_holding_registers(
                                         address=dev['register_address'],
                                         count=dev['register_count'],
-                                        slave=dev['slave_id']
+                                        device_id=dev['slave_id']
                                     )
                                 except TypeError:
-                                    result = client.read_holding_registers(
-                                        address=dev['register_address'],
-                                        count=dev['register_count'],
-                                        unit=dev['slave_id']
-                                    )
-                        # Read input registers (0x04)
-                        elif group['command'] == 'read_input_registers':
-                            try:
-                                result = client.read_input_registers(
-                                    address=dev['register_address'],
-                                    count=dev['register_count'],
-                                    device_id=dev['slave_id']
-                                )
-                            except TypeError:
+                                    try:
+                                        result = client.read_holding_registers(
+                                            address=dev['register_address'],
+                                            count=dev['register_count'],
+                                            slave=dev['slave_id']
+                                        )
+                                    except TypeError:
+                                        result = client.read_holding_registers(
+                                            address=dev['register_address'],
+                                            count=dev['register_count'],
+                                            unit=dev['slave_id']
+                                        )
+                            # Read input registers (0x04)
+                            elif group['command'] == 'read_input_registers':
                                 try:
                                     result = client.read_input_registers(
                                         address=dev['register_address'],
                                         count=dev['register_count'],
-                                        slave=dev['slave_id']
+                                        device_id=dev['slave_id']
                                     )
                                 except TypeError:
-                                    result = client.read_input_registers(
-                                        address=dev['register_address'],
-                                        count=dev['register_count'],
-                                        unit=dev['slave_id']
-                                    )
-                        else:
-                            continue
+                                    try:
+                                        result = client.read_input_registers(
+                                            address=dev['register_address'],
+                                            count=dev['register_count'],
+                                            slave=dev['slave_id']
+                                        )
+                                    except TypeError:
+                                        result = client.read_input_registers(
+                                            address=dev['register_address'],
+                                            count=dev['register_count'],
+                                            unit=dev['slave_id']
+                                        )
+                            else:
+                                continue
                         
                     if not result.isError():
                         irat = dev['irat'] if 'irat' in dev.keys() else 1.0
@@ -473,11 +484,12 @@ def poll_devices():
             mqtt_client.disconnect()
             mqtt_client.loop_stop()
             
-        if client:
-            client.close()
         conn.commit()
     except Exception as e:
-        print(f"Worker Error: {e}")
+        print(f"Polling error: {e}")
     finally:
+        with rs485_lock:
+            if client:
+                client.close()
         if 'conn' in locals() and conn:
             conn.close()

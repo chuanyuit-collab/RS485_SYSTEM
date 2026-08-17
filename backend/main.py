@@ -510,54 +510,57 @@ def test_rs485_group(group: GroupUpdate, request: Request):
         return JSONResponse(status_code=400, content={"status": "error", "message": "尚未設定 Serial Port"})
         
     from pymodbus.client import ModbusSerialClient
-    from rs485_worker import parse_payload
+    from rs485_worker import parse_payload, rs485_lock
     
     client = None
     try:
         try:
-            client = ModbusSerialClient(
-                port=sys_set['serial_port'], 
-                baudrate=sys_set['serial_baudrate'], 
-                bytesize=sys_set['serial_bytesize'], 
-                parity=sys_set['serial_parity'], 
-                stopbits=sys_set['serial_stopbits'], 
-                timeout=1
-            )
+            with rs485_lock:
+                client = ModbusSerialClient(
+                    port=sys_set['serial_port'], 
+                    baudrate=sys_set['serial_baudrate'], 
+                    bytesize=sys_set['serial_bytesize'], 
+                    parity=sys_set['serial_parity'], 
+                    stopbits=sys_set['serial_stopbits'], 
+                    timeout=1
+                )
         except TypeError:
             # Fallback for older pymodbus versions
-            client = ModbusSerialClient(
-                method='rtu', 
-                port=sys_set['serial_port'], 
-                baudrate=sys_set['serial_baudrate'], 
-                bytesize=sys_set['serial_bytesize'], 
-                parity=sys_set['serial_parity'], 
-                stopbits=sys_set['serial_stopbits'], 
-                timeout=1
-            )
+            with rs485_lock:
+                client = ModbusSerialClient(
+                    method='rtu', 
+                    port=sys_set['serial_port'], 
+                    baudrate=sys_set['serial_baudrate'], 
+                    bytesize=sys_set['serial_bytesize'], 
+                    parity=sys_set['serial_parity'], 
+                    stopbits=sys_set['serial_stopbits'], 
+                    timeout=1
+                )
             
-        if not client.connect():
-            return JSONResponse(status_code=400, content={"status": "error", "message": f"無法開啟 {sys_set['serial_port']}"})
-            
-        result = None
-        if group.command == 'read_holding_registers':
-            try:
-                result = client.read_holding_registers(address=dev.register_address, count=dev.register_count, device_id=dev.slave_id)
-            except TypeError:
+        with rs485_lock:
+            if not client.connect():
+                return JSONResponse(status_code=400, content={"status": "error", "message": f"無法開啟 {sys_set['serial_port']}"})
+                
+            result = None
+            if group.command == 'read_holding_registers':
                 try:
-                    result = client.read_holding_registers(address=dev.register_address, count=dev.register_count, slave=dev.slave_id)
+                    result = client.read_holding_registers(address=dev.register_address, count=dev.register_count, device_id=dev.slave_id)
                 except TypeError:
-                    result = client.read_holding_registers(address=dev.register_address, count=dev.register_count, unit=dev.slave_id)
-        elif group.command == 'read_input_registers':
-            try:
-                result = client.read_input_registers(address=dev.register_address, count=dev.register_count, device_id=dev.slave_id)
-            except TypeError:
+                    try:
+                        result = client.read_holding_registers(address=dev.register_address, count=dev.register_count, slave=dev.slave_id)
+                    except TypeError:
+                        result = client.read_holding_registers(address=dev.register_address, count=dev.register_count, unit=dev.slave_id)
+            elif group.command == 'read_input_registers':
                 try:
-                    result = client.read_input_registers(address=dev.register_address, count=dev.register_count, slave=dev.slave_id)
+                    result = client.read_input_registers(address=dev.register_address, count=dev.register_count, device_id=dev.slave_id)
                 except TypeError:
-                    result = client.read_input_registers(address=dev.register_address, count=dev.register_count, unit=dev.slave_id)
-        else:
-            return JSONResponse(status_code=400, content={"status": "error", "message": f"不支援的指令: {group.command}"})
-            
+                    try:
+                        result = client.read_input_registers(address=dev.register_address, count=dev.register_count, slave=dev.slave_id)
+                    except TypeError:
+                        result = client.read_input_registers(address=dev.register_address, count=dev.register_count, unit=dev.slave_id)
+            else:
+                return JSONResponse(status_code=400, content={"status": "error", "message": f"不支援的指令: {group.command}"})
+                
         if result and not result.isError():
             val = parse_payload(result.registers, group.parse_method, dev.irat, dev.urat)
             return {"status": "success", "message": "連線測試成功", "data": val, "raw": result.registers}
@@ -566,8 +569,9 @@ def test_rs485_group(group: GroupUpdate, request: Request):
     except Exception as e:
         return JSONResponse(status_code=400, content={"status": "error", "message": str(e)})
     finally:
-        if client:
-            client.close()
+        with rs485_lock:
+            if client:
+                client.close()
 
 # --- Advanced Wi-Fi Management ---
 @app.get("/api/wifi/status")
