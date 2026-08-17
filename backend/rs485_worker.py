@@ -207,6 +207,7 @@ def parse_payload(registers, parse_method, irat=1.0, urat=1.0):
         return None
 
 def poll_devices():
+    lock_acquired = False
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -245,35 +246,37 @@ def poll_devices():
             stopb = sys_set.get('serial_stopbits', 1)
 
             try:
-                with rs485_lock:
-                    client = ModbusSerialClient(
-                        port=port, 
-                        baudrate=baud, 
-                        bytesize=bsize, 
-                        parity=parity, 
-                        stopbits=stopb, 
-                        timeout=1
-                    )
+                client = ModbusSerialClient(
+                    port=port, 
+                    baudrate=baud, 
+                    bytesize=bsize, 
+                    parity=parity, 
+                    stopbits=stopb, 
+                    timeout=1
+                )
             except TypeError:
                 # Fallback for older pymodbus versions
-                with rs485_lock:
-                    client = ModbusSerialClient(
-                        method='rtu', 
-                        port=port, 
-                        baudrate=baud, 
-                        bytesize=bsize, 
-                        parity=parity, 
-                        stopbits=stopb, 
-                        timeout=1
-                    )
+                client = ModbusSerialClient(
+                    method='rtu', 
+                    port=port, 
+                    baudrate=baud, 
+                    bytesize=bsize, 
+                    parity=parity, 
+                    stopbits=stopb, 
+                    timeout=1
+                )
 
-            with rs485_lock:
-                if not client.connect():
-                    if mqtt_client:
-                        mqtt_client.disconnect()
-                        mqtt_client.loop_stop()
-                    conn.close()
-                    return
+            rs485_lock.acquire()
+            lock_acquired = True
+            
+            if not client.connect():
+                if mqtt_client:
+                    mqtt_client.disconnect()
+                    mqtt_client.loop_stop()
+                conn.close()
+                rs485_lock.release()
+                lock_acquired = False
+                return
             
         # Get active groups
         cursor.execute("SELECT * FROM rs485_groups")
@@ -297,7 +300,7 @@ def poll_devices():
                         result = MockResult()
                     else:
                         # Read holding registers (0x03)
-                        with rs485_lock:
+                        if True:
                             if group['command'] == 'read_holding_registers':
                                 try:
                                     result = client.read_holding_registers(
@@ -393,13 +396,14 @@ def poll_devices():
                                     last_mqtt_upload_time[dev_id_str] = current_time
                                     last_mqtt_upload_value[dev_id_str] = val
                             
-                            # Check if value is a dictionary (multiple values)
                             if isinstance(val, dict):
                                 # Save to history as JSON
+                                from datetime import datetime
+                                current_local_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                 cursor.execute('''
-                                    INSERT INTO historical_data (device_id, value)
-                                    VALUES (?, ?)
-                                ''', (dev['id'], json.dumps(val)))
+                                    INSERT INTO historical_data (device_id, value, timestamp)
+                                    VALUES (?, ?, ?)
+                                ''', (dev['id'], json.dumps(val), current_local_time))
                             
                                 # Publish to MQTT
                                 if mqtt_client and should_publish:
@@ -426,10 +430,12 @@ def poll_devices():
                             else:
                                 # Normal single float/int value
                                 # Save to history
+                                from datetime import datetime
+                                current_local_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                 cursor.execute('''
-                                    INSERT INTO historical_data (device_id, value)
-                                    VALUES (?, ?)
-                                ''', (dev['id'], val))
+                                    INSERT INTO historical_data (device_id, value, timestamp)
+                                    VALUES (?, ?, ?)
+                                ''', (dev['id'], val, current_local_time))
                             
                                 # Check limits for alerts
                                 if val < group['limit_min'] or val > group['limit_max']:
@@ -488,8 +494,9 @@ def poll_devices():
     except Exception as e:
         print(f"Polling error: {e}")
     finally:
-        with rs485_lock:
-            if client:
-                client.close()
+        if 'client' in locals() and client:
+            client.close()
+        if lock_acquired:
+            rs485_lock.release()
         if 'conn' in locals() and conn:
             conn.close()
