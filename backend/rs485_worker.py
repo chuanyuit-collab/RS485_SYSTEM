@@ -156,18 +156,20 @@ def parse_payload(registers, parse_method, irat=1.0, urat=1.0):
             b = struct.pack('>HH', registers[0], registers[1])
             return struct.unpack('>i', b)[0]
 
-        # Flowmeter Net Flow (1x Float32 REAL4 Big Endian)
+        # Flowmeter Net Flow (1x Float32 REAL4 CDAB)
         elif parse_method == 'flowmeter_net_flow':
             if len(registers) < 2: return None
-            b = struct.pack('>HH', registers[0], registers[1])
+            b = struct.pack('>HH', registers[1], registers[0])
             val = struct.unpack('>f', b)[0]
             return {"type": "FlowMeter", "NetFlow": round(val, 2)}
 
-        # Flowmeter Temps (2x Float32 REAL4 Big Endian)
+        # Flowmeter Temps (2x Float32 REAL4 CDAB)
         elif parse_method == 'flowmeter_temps':
             if len(registers) < 4: return None
-            b = struct.pack('>HHHH', *registers[0:4])
-            t1, t2 = struct.unpack('>ff', b)
+            b1 = struct.pack('>HH', registers[1], registers[0])
+            b2 = struct.pack('>HH', registers[3], registers[2])
+            t1 = struct.unpack('>f', b1)[0]
+            t2 = struct.unpack('>f', b2)[0]
             return {"type": "WaterTemp", "supply": round(t1, 2), "return": round(t2, 2)}
             
         # PH Sensor (UInt16 * 0.01)
