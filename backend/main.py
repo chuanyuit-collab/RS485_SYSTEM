@@ -529,6 +529,9 @@ def test_rs485_group(group: GroupUpdate, request: Request):
                 method='rtu', 
                 port=sys_set['serial_port'], 
                 baudrate=sys_set['serial_baudrate'], 
+                bytesize=sys_set['serial_bytesize'], 
+                parity=sys_set['serial_parity'], 
+                stopbits=sys_set['serial_stopbits'], 
                 timeout=1
             )
             
