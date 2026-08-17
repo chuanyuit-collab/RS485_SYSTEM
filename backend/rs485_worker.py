@@ -288,18 +288,32 @@ def poll_devices():
                     else:
                         # Read holding registers (0x03)
                         if group['command'] == 'read_holding_registers':
-                            result = client.read_holding_registers(
-                                address=dev['register_address'],
-                                count=dev['register_count'],
-                                slave=dev['slave_id']
-                            )
+                            try:
+                                result = client.read_holding_registers(
+                                    address=dev['register_address'],
+                                    count=dev['register_count'],
+                                    slave=dev['slave_id']
+                                )
+                            except TypeError:
+                                result = client.read_holding_registers(
+                                    address=dev['register_address'],
+                                    count=dev['register_count'],
+                                    unit=dev['slave_id']
+                                )
                         # Read input registers (0x04)
                         elif group['command'] == 'read_input_registers':
-                            result = client.read_input_registers(
-                                address=dev['register_address'],
-                                count=dev['register_count'],
-                                slave=dev['slave_id']
-                            )
+                            try:
+                                result = client.read_input_registers(
+                                    address=dev['register_address'],
+                                    count=dev['register_count'],
+                                    slave=dev['slave_id']
+                                )
+                            except TypeError:
+                                result = client.read_input_registers(
+                                    address=dev['register_address'],
+                                    count=dev['register_count'],
+                                    unit=dev['slave_id']
+                                )
                         else:
                             continue
                         

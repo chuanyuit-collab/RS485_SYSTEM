@@ -537,9 +537,15 @@ def test_rs485_group(group: GroupUpdate, request: Request):
             
         result = None
         if group.command == 'read_holding_registers':
-            result = client.read_holding_registers(address=dev.register_address, count=dev.register_count, slave=dev.slave_id)
+            try:
+                result = client.read_holding_registers(address=dev.register_address, count=dev.register_count, slave=dev.slave_id)
+            except TypeError:
+                result = client.read_holding_registers(address=dev.register_address, count=dev.register_count, unit=dev.slave_id)
         elif group.command == 'read_input_registers':
-            result = client.read_input_registers(address=dev.register_address, count=dev.register_count, slave=dev.slave_id)
+            try:
+                result = client.read_input_registers(address=dev.register_address, count=dev.register_count, slave=dev.slave_id)
+            except TypeError:
+                result = client.read_input_registers(address=dev.register_address, count=dev.register_count, unit=dev.slave_id)
         else:
             return JSONResponse(status_code=400, content={"status": "error", "message": f"不支援的指令: {group.command}"})
             
