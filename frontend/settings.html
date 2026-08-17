@@ -92,10 +92,16 @@
                 <!-- Content Area -->
                 <div class="settings-content" style="flex: 1; min-width: 300px;">
                     <!-- 全域系統設定 -->
-                    <section v-show="activeTab === 'system'" class="settings-section card" style="margin-bottom: 0;">
-                        <h2>系統與通訊設定</h2>
+                    <div v-show="activeTab === 'system'">
+                        
+                        <!-- RS485 通訊設定 -->
+                        <section class="settings-section card" style="margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h2 style="margin: 0;">RS485 通訊設定</h2>
+                                <button class="btn btn-primary" @click="saveSysSettings">儲存 RS485 設定</button>
+                            </div>
                 
-                <div class="grid-2">
+                            <div class="grid-2">
                         <div class="form-group">
                             <label>Serial Port (序列埠)</label>
                             <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
@@ -149,14 +155,17 @@
                             <option :value="2">2</option>
                         </select>
                     </div>
-                </div>
+                        </section>
 
-                <div class="grid-2">
-                    <!-- MQTT -->
-                    <div>
-                        <h3 style="margin: 1rem 0;">MQTT 設定</h3>
-                        <div class="form-group" style="display: flex; align-items: center; gap: 1rem;">
-                            <label style="margin:0;">啟用 MQTT</label>
+                        <!-- MQTT 設定 -->
+                        <section class="settings-section card" style="margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h2 style="margin: 0;">MQTT 設定</h2>
+                                <button class="btn btn-primary" @click="saveSysSettings">儲存 MQTT 設定</button>
+                            </div>
+                            
+                            <div class="form-group" style="display: flex; align-items: center; gap: 1rem;">
+                                <label style="margin:0;">啟用 MQTT</label>
                             <label class="switch">
                                 <input type="checkbox" v-model="sysSettings.mqtt_enabled">
                                 <span class="slider"></span>
@@ -229,23 +238,29 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Telegram -->
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                            <div>
-                                <strong>啟用模擬測試 (Simulation Mode)</strong>
-                                <div style="font-size: 0.85rem; color: var(--text-secondary);">開啟後，將暫停讀取實體 COM Port，自動產生合理的假資料供版面展示與測試。</div>
                             </div>
-                            <label class="switch">
-                                <input type="checkbox" v-model="sysSettings.simulation_mode">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: var(--accent-color);">Telegram 機器人設定</h3>
-                        <div class="form-group" style="display: flex; align-items: center; gap: 1rem;">
-                            <label style="margin:0;">啟用 Telegram</label>
+                        </section>
+
+                        <!-- Telegram 設定 -->
+                        <section class="settings-section card" style="margin-bottom: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h2 style="margin: 0;">Telegram 機器人設定</h2>
+                                <button class="btn btn-primary" @click="saveSysSettings">儲存 Telegram 設定</button>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 1.5rem;">
+                                <div>
+                                    <strong>啟用模擬測試 (Simulation Mode)</strong>
+                                    <div style="font-size: 0.85rem; color: var(--text-secondary);">開啟後，將暫停讀取實體 COM Port，自動產生合理的假資料供版面展示與測試。</div>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" v-model="sysSettings.simulation_mode">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="form-group" style="display: flex; align-items: center; gap: 1rem;">
+                                <label style="margin:0;">啟用 Telegram</label>
                             <label class="switch">
                                 <input type="checkbox" v-model="sysSettings.telegram_enabled">
                                 <span class="slider"></span>
@@ -287,13 +302,9 @@
                                 <button type="button" class="btn" @click="testConnection('telegram')" style="background-color: var(--accent-color); padding: 0.5rem 1rem; color: #fff; border: none; cursor: pointer; border-radius: 4px;">測試 Telegram 發送</button>
                             </div>
                         </div>
+                            </div>
+                        </section>
                     </div>
-                </div>
-
-                <div style="text-align: right; margin-top: 1rem;">
-                    <button class="btn btn-primary" @click="saveSysSettings">儲存系統設定</button>
-                </div>
-            </section>
 
             <!-- RS485 指令編輯 -->
             <section v-show="activeTab === 'commands'" class="settings-section card" style="margin-bottom: 0;">
