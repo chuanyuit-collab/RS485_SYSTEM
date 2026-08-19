@@ -177,6 +177,9 @@ def init_db():
         register_count INTEGER,
         irat REAL DEFAULT 1.0,
         urat REAL DEFAULT 1.0,
+        alarm_enabled BOOLEAN DEFAULT 0,
+        limit_min REAL DEFAULT 0,
+        limit_max REAL DEFAULT 100,
         FOREIGN KEY(group_id) REFERENCES rs485_groups(id) ON DELETE CASCADE
     )
     ''')
@@ -184,6 +187,13 @@ def init_db():
     try:
         cursor.execute("ALTER TABLE rs485_devices ADD COLUMN irat REAL DEFAULT 1.0")
         cursor.execute("ALTER TABLE rs485_devices ADD COLUMN urat REAL DEFAULT 1.0")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE rs485_devices ADD COLUMN alarm_enabled BOOLEAN DEFAULT 0")
+        cursor.execute("ALTER TABLE rs485_devices ADD COLUMN limit_min REAL DEFAULT 0")
+        cursor.execute("ALTER TABLE rs485_devices ADD COLUMN limit_max REAL DEFAULT 100")
     except sqlite3.OperationalError:
         pass
 

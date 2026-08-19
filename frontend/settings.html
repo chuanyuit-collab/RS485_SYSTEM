@@ -433,17 +433,7 @@
                                 <option value="pd666_epi">正向有功總電能 (EPI)</option>
                                 <option value="pd666_epe">反向有功總電能 (EPE)</option>
                             </select>
-                        </div>
-                        <div class="grid-2">
-                            <div class="form-group">
-                                <label>警報下限</label>
-                                <input type="number" step="any" v-model="group.limit_min">
-                            </div>
-                            <div class="form-group">
-                                <label>警報上限</label>
-                                <input type="number" step="any" v-model="group.limit_max">
-                            </div>
-                        </div>
+                        <!-- 警報上下限移至個別設備設定 -->
                     </div>
 
                     <div style="margin-top: 1rem;" :style="{ opacity: group.is_enabled ? 1 : 0.5, pointerEvents: group.is_enabled ? 'auto' : 'none' }">
@@ -452,32 +442,51 @@
                             <button class="btn" @click="addDevice(group)" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">+ 新增 ID</button>
                         </h4>
                         
-                        <div v-for="(dev, index) in group.devices" :key="index" style="display: flex; gap: 1rem; margin-bottom: 0.5rem; align-items: flex-end;">
-                            <div class="form-group" style="margin:0; flex: 1;">
+                        <div v-for="(dev, index) in group.devices" :key="index" style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: flex-end; flex-wrap: wrap; background: rgba(0,0,0,0.15); padding: 1rem; border-radius: 8px;">
+                            <div class="form-group" style="margin:0; flex: 1; min-width: 80px;">
                                 <label v-if="index===0">Slave ID</label>
                                 <input type="number" v-model="dev.slave_id">
                             </div>
-                            <div class="form-group" style="margin:0; flex: 1;">
-                                <label v-if="index===0">暫存器位址 (Register)</label>
+                            <div class="form-group" style="margin:0; flex: 1; min-width: 150px;">
+                                <label v-if="index===0">暫存器 (Register)</label>
                                 <input type="number" v-model="dev.register_address">
                             </div>
-                            <div class="form-group" style="margin:0; flex: 1;">
-                                <label v-if="index===0">讀取長度 (Count)</label>
+                            <div class="form-group" style="margin:0; flex: 1; min-width: 120px;">
+                                <label v-if="index===0">長度 (Count)</label>
                                 <input type="number" v-model="dev.register_count" min="1">
                             </div>
                             <div class="form-group" style="margin:0; flex: 1; min-width: 100px;" v-if="group.parse_method && group.parse_method.startsWith('pd666_')">
-                                <label v-if="index===0">電流倍率 IrAt</label>
+                                <label v-if="index===0">電流倍率</label>
                                 <input type="number" step="any" v-model.number="dev.irat">
                             </div>
                             <div class="form-group" style="margin:0; flex: 1; min-width: 100px;" v-if="group.parse_method && group.parse_method.startsWith('pd666_')">
-                                <label v-if="index===0">電壓倍率 UrAt</label>
+                                <label v-if="index===0">電壓倍率</label>
                                 <input type="number" step="any" v-model.number="dev.urat">
                             </div>
-                            <div class="form-group" style="margin:0; flex: 2; min-width: 250px;">
+                            <div class="form-group" style="margin:0; flex: 2; min-width: 200px;">
                                 <label v-if="index===0">發送指令預覽 (HEX)</label>
                                 <input type="text" readonly :value="getModbusHex(dev.slave_id, group.command, dev.register_address, dev.register_count)" style="font-family: monospace; background: var(--bg-color); color: var(--accent-color); font-size: 0.95rem; text-align: center;">
                             </div>
                             <button class="btn btn-danger" @click="removeDevice(group, index)" style="padding: 0.75rem;">刪除</button>
+
+                            <div style="flex-basis: 100%; height: 0; margin: 0;"></div>
+                            
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; flex: 1; min-width: 150px;">
+                                <label style="margin:0; color: var(--accent-color);">啟用異常警報</label>
+                                <label class="switch">
+                                    <input type="checkbox" v-model="dev.alarm_enabled">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="form-group" style="margin: 0; margin-top: 0.5rem; flex: 1; min-width: 120px;" :style="{ opacity: dev.alarm_enabled ? 1 : 0.3 }">
+                                <label>警報下限</label>
+                                <input type="number" step="any" v-model.number="dev.limit_min" :disabled="!dev.alarm_enabled">
+                            </div>
+                            <div class="form-group" style="margin: 0; margin-top: 0.5rem; flex: 1; min-width: 120px;" :style="{ opacity: dev.alarm_enabled ? 1 : 0.3 }">
+                                <label>警報上限</label>
+                                <input type="number" step="any" v-model.number="dev.limit_max" :disabled="!dev.alarm_enabled">
+                            </div>
+                            <div style="flex: 2;"></div>
                         </div>
                     </div>
                     
@@ -982,7 +991,10 @@
                         register_address: defaultAddr,
                         register_count: defaultCount,
                         irat: 1.0,
-                        urat: 1.0
+                        urat: 1.0,
+                        alarm_enabled: false,
+                        limit_min: 0,
+                        limit_max: 100
                     });
                 };
 

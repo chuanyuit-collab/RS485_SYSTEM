@@ -267,6 +267,9 @@ class DeviceModel(BaseModel):
     register_count: int = 1
     irat: float = 1.0
     urat: float = 1.0
+    alarm_enabled: bool = False
+    limit_min: float = 0.0
+    limit_max: float = 100.0
 
 class GroupUpdate(BaseModel):
     id: int
@@ -464,7 +467,10 @@ def get_rs485_groups():
             "register_address": d["register_address"],
             "register_count": d["register_count"],
             "irat": d["irat"] if "irat" in d.keys() else 1.0,
-            "urat": d["urat"] if "urat" in d.keys() else 1.0
+            "urat": d["urat"] if "urat" in d.keys() else 1.0,
+            "alarm_enabled": bool(d["alarm_enabled"]) if "alarm_enabled" in d.keys() else False,
+            "limit_min": d["limit_min"] if "limit_min" in d.keys() else 0.0,
+            "limit_max": d["limit_max"] if "limit_max" in d.keys() else 100.0
         } for d in cursor.fetchall()]
     conn.close()
     return groups
@@ -484,9 +490,9 @@ def update_rs485_group(group: GroupUpdate, request: Request):
     cursor.execute("DELETE FROM rs485_devices WHERE group_id=?", (group.id,))
     for dev in group.devices:
         cursor.execute('''
-            INSERT INTO rs485_devices (group_id, slave_id, register_address, register_count, irat, urat)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (group.id, dev.slave_id, dev.register_address, dev.register_count, dev.irat, dev.urat))
+            INSERT INTO rs485_devices (group_id, slave_id, register_address, register_count, irat, urat, alarm_enabled, limit_min, limit_max)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (group.id, dev.slave_id, dev.register_address, dev.register_count, dev.irat, dev.urat, dev.alarm_enabled, dev.limit_min, dev.limit_max))
         
     conn.commit()
     conn.close()
