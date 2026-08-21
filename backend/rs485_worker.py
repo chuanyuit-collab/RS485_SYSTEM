@@ -405,7 +405,7 @@ def poll_devices():
                                 cursor.execute('''
                                     INSERT INTO historical_data (device_id, value, timestamp)
                                     VALUES (?, ?, ?)
-                                ''', (dev['id'], json.dumps(val), current_local_time))
+                                ''', (dev['id'], json.dumps(val, ensure_ascii=False), current_local_time))
                             
                                 # Publish to MQTT
                                 if mqtt_client and should_publish:
@@ -422,11 +422,16 @@ def poll_devices():
                                             
                                     topic = f"{topic_prefix}/{group['name']}/{dev['slave_id']}" if topic_prefix else f"{group['name']}/{dev['slave_id']}"
                                     
+                                    
+                                    data_dict = val if isinstance(val, dict) else {"value": val}
+                                    if 'type_name' in group and group['type_name']:
+                                        data_dict['type'] = group['type_name']
+                                        
                                     payload = {
-                                        "device_id": dev['id'],
                                         "slave_id": dev['slave_id'],
                                         "group": group['name'],
-                                        "data": val
+                                        "data": data_dict,
+                                        "timestamp": int(time.time() * 1000)
                                     }
                                     publish_with_client(mqtt_client, topic, payload)
                             else:
@@ -440,9 +445,10 @@ def poll_devices():
                                 ''', (dev['id'], val, current_local_time))
                             
                                 # Check limits for alerts
-                                if dev.get('alarm_enabled', 0):
-                                    limit_min = dev.get('limit_min', 0)
-                                    limit_max = dev.get('limit_max', 100)
+                                dev_dict = dict(dev)
+                                if dev_dict.get('alarm_enabled', 0):
+                                    limit_min = dev_dict.get('limit_min', 0)
+                                    limit_max = dev_dict.get('limit_max', 100)
                                     if val < limit_min or val > limit_max:
                                         msg = f"⚠️ ALERT: Device {dev['id']} (Group: {group['name']}) value {val} out of bounds ({limit_min} - {limit_max})"
                                         print(msg)
@@ -479,11 +485,16 @@ def poll_devices():
                                             
                                     topic = f"{topic_prefix}/{group['name']}/{dev['slave_id']}" if topic_prefix else f"{group['name']}/{dev['slave_id']}"
                                     
+                                    
+                                    data_dict = {"value": val}
+                                    if 'type_name' in group and group['type_name']:
+                                        data_dict['type'] = group['type_name']
+                                        
                                     payload = {
-                                        "device_id": dev['id'],
                                         "slave_id": dev['slave_id'],
                                         "group": group['name'],
-                                        "value": val
+                                        "data": data_dict,
+                                        "timestamp": int(time.time() * 1000)
                                     }
                                     publish_with_client(mqtt_client, topic, payload)
                     else:

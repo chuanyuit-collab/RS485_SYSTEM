@@ -67,6 +67,10 @@
                         <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent-color);">RS485 指令編輯</h3>
                         <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">自訂讀取指令範本</p>
                     </div>
+                    <div class="card tab-card" :class="{ active: activeTab === 'setup_commands' }" @click="activeTab = 'setup_commands'">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent-color);">RS485 設備參數設定</h3>
+                        <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">自訂與執行設定指令</p>
+                    </div>
                     <div class="card tab-card" :class="{ active: activeTab === 'rs485' }" @click="activeTab = 'rs485'">
                         <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent-color);">RS485 裝置群組</h3>
                         <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">讀取群組與設備 ID</p>
@@ -370,6 +374,75 @@
                 </div>
             </section>
 
+            <!-- RS485 設備參數設定 -->
+            <section v-show="activeTab === 'setup_commands'" class="settings-section card" style="margin-bottom: 0;">
+                <h2>RS485 設備參數設定 (寫入指令)</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">在這裡建立與管理寫入設備的指令 (例如：修改 Slave ID、修改 Baudrate)。<br>設定好之後可以在下方執行區塊選擇目標設備進行設定。</p>
+                
+                <div v-for="(cmd, index) in setupCommandsList" :key="index" class="group-card">
+                    <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                        <div class="form-group" style="margin:0; flex: 1; min-width: 150px;">
+                            <label v-if="index===0">指令名稱</label>
+                            <input type="text" v-model="cmd.name" placeholder="例如: 修改 ID 為 2">
+                        </div>
+                        <div class="form-group" style="margin:0; flex: 1; min-width: 180px;">
+                            <label v-if="index===0">指令類型</label>
+                            <select v-model="cmd.command">
+                                <option value="read_holding_registers">Read Holding Registers (0x03)</option>
+                                <option value="read_input_registers">Read Input Registers (0x04)</option>
+                                <option value="write_single_register">Write Single Register (0x06)</option>
+                                <option value="write_multiple_registers">Write Multiple Registers (0x10)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0; flex: 1; min-width: 100px;">
+                            <label v-if="index===0">位址(Hex)</label>
+                            <input type="text" v-model="cmd.register_address_hex" placeholder="e.g. 100">
+                        </div>
+                        <div class="form-group" style="margin:0; flex: 2; min-width: 150px;">
+                            <label v-if="index===0">{{ cmd.command.startsWith('read') ? '讀取長度' : '寫入值(Hex)' }}</label>
+                            <input v-if="cmd.command.startsWith('read')" type="number" min="1" v-model.number="cmd.read_count" placeholder="讀取幾個 Register">
+                            <input v-else type="text" v-model="cmd.write_value" placeholder="多個用逗號隔開 (如 A, FF)">
+                        </div>
+                        <button class="btn btn-danger" @click="removeSetupCommand(index)" style="padding: 0.75rem;">刪除</button>
+                    </div>
+                </div>
+                
+                <button class="btn" @click="addSetupCommand" style="margin-top: 1rem;">+ 新增設定指令</button>
+
+                <div style="text-align: right; margin-top: 1rem; margin-bottom: 2rem;">
+                    <button class="btn btn-primary" @click="saveSetupCommands()">💾 儲存所有設定指令</button>
+                </div>
+                
+                <h3 style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 2rem;">執行設定指令</h3>
+                <div class="group-card" style="background: rgba(56, 189, 248, 0.1); border-color: var(--accent-color);">
+                    <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                        <div class="form-group" style="margin:0; flex: 1; min-width: 120px;">
+                            <label>目標 Slave ID</label>
+                            <input type="number" v-model.number="setupCommandExec.slave_id" min="1" max="255">
+                        </div>
+                        <div class="form-group" style="margin:0; flex: 2; min-width: 200px;">
+                            <label>選擇指令</label>
+                            <select v-model="setupCommandExec.selected_cmd_id" @change="onSetupCommandSelect">
+                                <option value="null">-- 請選擇 --</option>
+                                <option v-for="c in setupCommandsList" :value="c.id || c.name">{{ c.name }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0; flex: 2; min-width: 150px;" v-if="setupCommandExec.selected_cmd_id !== 'null'">
+                            <label>{{ setupCommandExec.command.startsWith('read') ? '讀取長度' : '確認寫入值(Hex, 可修改)' }}</label>
+                            <input v-if="setupCommandExec.command.startsWith('read')" type="number" min="1" v-model.number="setupCommandExec.read_count">
+                            <input v-else type="text" v-model="setupCommandExec.write_value">
+                        </div>
+                        <div style="flex: 1; min-width: 150px;" v-if="setupCommandExec.selected_cmd_id !== 'null'">
+                            <label style="display:block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">發送預覽 (Hex)</label>
+                            <div style="padding: 0.5rem; background: rgba(0,0,0,0.3); font-family: monospace; font-size: 0.85rem; color: var(--accent-color); border: 1px solid var(--border-color); border-radius: 4px; height: 38px; display: flex; align-items: center;">
+                                {{ setupCommandPreviewHex() }}
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" v-if="setupCommandExec.selected_cmd_id !== 'null'" @click="executeSetupCommand" style="padding: 0.75rem;">{{ setupCommandExec.command.startsWith('read') ? '執行讀取' : '執行寫入' }}</button>
+                    </div>
+                </div>
+            </section>
+
             <!-- RS485 群組設定 -->
             <section v-show="activeTab === 'rs485'" class="settings-section card" style="margin-bottom: 0;">
                 <h2>RS485 裝置群組設定 (共 10 組)</h2>
@@ -377,12 +450,15 @@
                 <div v-for="group in groups" :key="group.id" class="group-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem; padding-bottom: 0.5rem;">
                         <h3 style="margin: 0;">Group {{ group.id }}</h3>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <label style="margin:0; font-size: 0.9rem;">啟用群組</label>
-                            <label class="switch">
-                                <input type="checkbox" v-model="group.is_enabled">
-                                <span class="slider"></span>
-                            </label>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <button class="btn btn-primary" @click="saveGroup(group)" style="padding: 0.3rem 0.8rem; font-size: 0.85rem; background-color: var(--success-color); color: #000; border: none;">儲存群組設定</button>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <label style="margin:0; font-size: 0.9rem;">啟用群組</label>
+                                <label class="switch">
+                                    <input type="checkbox" v-model="group.is_enabled">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="grid-2" :style="{ opacity: group.is_enabled ? 1 : 0.5, pointerEvents: group.is_enabled ? 'auto' : 'none' }">
@@ -393,9 +469,15 @@
                                 <option v-for="c in commandsList" :value="c.name">{{ c.name }}</option>
                             </select>
                         </div>
-                        <div class="form-group" style="grid-column: span 2;">
-                            <label>群組名稱</label>
-                            <input type="text" v-model="group.name">
+                        <div class="form-group" style="grid-column: span 2; display: flex; gap: 1rem;">
+                            <div style="flex: 1;">
+                                <label>群組名稱</label>
+                                <input type="text" v-model="group.name">
+                            </div>
+                            <div style="flex: 1;">
+                                <label>設備類型 (TYPE)</label>
+                                <input type="text" v-model="group.type_name" placeholder="例如: FlowMeter, PM2.5, 等等">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>指令</label>
@@ -433,66 +515,77 @@
                                 <option value="pd666_epi">正向有功總電能 (EPI)</option>
                                 <option value="pd666_epe">反向有功總電能 (EPE)</option>
                             </select>
-                        <!-- 警報上下限移至個別設備設定 -->
+                        </div>
                     </div>
 
                     <div style="margin-top: 1rem;" :style="{ opacity: group.is_enabled ? 1 : 0.5, pointerEvents: group.is_enabled ? 'auto' : 'none' }">
                         <h4 style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
                             包含設備 (ID)
-                            <button class="btn" @click="addDevice(group)" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">+ 新增 ID</button>
+                            <button class="btn" @click="addDevice(group)" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; background: var(--accent-color); color: #000; border: none;">+ 新增 ID</button>
                         </h4>
                         
-                        <div v-for="(dev, index) in group.devices" :key="index" style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: flex-end; flex-wrap: wrap; background: rgba(0,0,0,0.15); padding: 1rem; border-radius: 8px;">
-                            <div class="form-group" style="margin:0; flex: 1; min-width: 80px;">
-                                <label v-if="index===0">Slave ID</label>
-                                <input type="number" v-model="dev.slave_id">
-                            </div>
-                            <div class="form-group" style="margin:0; flex: 1; min-width: 150px;">
-                                <label v-if="index===0">暫存器 (Register)</label>
-                                <input type="number" v-model="dev.register_address">
-                            </div>
-                            <div class="form-group" style="margin:0; flex: 1; min-width: 120px;">
-                                <label v-if="index===0">長度 (Count)</label>
-                                <input type="number" v-model="dev.register_count" min="1">
-                            </div>
-                            <div class="form-group" style="margin:0; flex: 1; min-width: 100px;" v-if="group.parse_method && group.parse_method.startsWith('pd666_')">
-                                <label v-if="index===0">電流倍率</label>
-                                <input type="number" step="any" v-model.number="dev.irat">
-                            </div>
-                            <div class="form-group" style="margin:0; flex: 1; min-width: 100px;" v-if="group.parse_method && group.parse_method.startsWith('pd666_')">
-                                <label v-if="index===0">電壓倍率</label>
-                                <input type="number" step="any" v-model.number="dev.urat">
-                            </div>
-                            <div class="form-group" style="margin:0; flex: 2; min-width: 200px;">
-                                <label v-if="index===0">發送指令預覽 (HEX)</label>
-                                <input type="text" readonly :value="getModbusHex(dev.slave_id, group.command, dev.register_address, dev.register_count)" style="font-family: monospace; background: var(--bg-color); color: var(--accent-color); font-size: 0.95rem; text-align: center;">
-                            </div>
-                            <button class="btn btn-danger" @click="removeDevice(group, index)" style="padding: 0.75rem;">刪除</button>
-
-                            <div style="flex-basis: 100%; height: 0; margin: 0;"></div>
-                            
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; flex: 1; min-width: 150px;">
-                                <label style="margin:0; color: var(--accent-color);">啟用異常警報</label>
-                                <label class="switch">
-                                    <input type="checkbox" v-model="dev.alarm_enabled">
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                            <div class="form-group" style="margin: 0; margin-top: 0.5rem; flex: 1; min-width: 120px;" :style="{ opacity: dev.alarm_enabled ? 1 : 0.3 }">
-                                <label>警報下限</label>
-                                <input type="number" step="any" v-model.number="dev.limit_min" :disabled="!dev.alarm_enabled">
-                            </div>
-                            <div class="form-group" style="margin: 0; margin-top: 0.5rem; flex: 1; min-width: 120px;" :style="{ opacity: dev.alarm_enabled ? 1 : 0.3 }">
-                                <label>警報上限</label>
-                                <input type="number" step="any" v-model.number="dev.limit_max" :disabled="!dev.alarm_enabled">
-                            </div>
-                            <div style="flex: 2;"></div>
-                        </div>
-                    </div>
-                    
-                    <div style="text-align: right; margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;">
-                        <button class="btn" @click="testGroupConnection(group)" style="background-color: var(--accent-color); color: white;">連線測試 (Test)</button>
-                        <button class="btn btn-primary" @click="saveGroup(group)">儲存群組設定</button>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.9rem; background: rgba(0,0,0,0.15); border-radius: 8px; overflow: hidden; display: block; overflow-x: auto;">
+                            <thead>
+                                <tr style="background: rgba(0,0,0,0.3); border-bottom: 2px solid var(--accent-color);">
+                                    <th style="padding: 0.5rem; text-align: left; width: 60px; white-space: nowrap;">ID</th>
+                                    <th style="padding: 0.5rem; text-align: left; width: 80px; white-space: nowrap;">位址(Hex)</th>
+                                    <th style="padding: 0.5rem; text-align: left; width: 70px; white-space: nowrap;">長度</th>
+                                    <th v-if="group.parse_method && group.parse_method.startsWith('pd666_')" style="padding: 0.5rem; text-align: left; width: 70px; white-space: nowrap;">I倍率</th>
+                                    <th v-if="group.parse_method && group.parse_method.startsWith('pd666_')" style="padding: 0.5rem; text-align: left; width: 70px; white-space: nowrap;">V倍率</th>
+                                    <th style="padding: 0.5rem; text-align: left; min-width: 120px;">發送預覽(HEX)</th>
+                                    <th style="padding: 0.5rem; text-align: center; width: 80px; white-space: nowrap;">異常警報</th>
+                                    <th style="padding: 0.5rem; text-align: left; width: 140px; white-space: nowrap;">範圍 (下限~上限)</th>
+                                    <th style="padding: 0.5rem; text-align: center; width: 60px;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody style="display: table-row-group; width: 100%;">
+                                <tr v-for="(dev, index) in group.devices" :key="index" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 0.5rem;">
+                                        <input type="number" v-model="dev.slave_id" style="padding: 0.3rem; margin: 0; width: 100%; font-size: 0.9rem; background: rgba(0,0,0,0.3); min-width: 50px;">
+                                    </td>
+                                    <td style="padding: 0.5rem;">
+                                        <input type="text" v-model="dev.register_address_hex" style="padding: 0.3rem; margin: 0; width: 100%; font-size: 0.9rem; background: rgba(0,0,0,0.3); min-width: 60px;">
+                                    </td>
+                                    <td style="padding: 0.5rem;">
+                                        <input type="number" v-model="dev.register_count" min="1" style="padding: 0.3rem; margin: 0; width: 100%; font-size: 0.9rem; background: rgba(0,0,0,0.3); min-width: 50px;">
+                                    </td>
+                                    <td v-if="group.parse_method && group.parse_method.startsWith('pd666_')" style="padding: 0.5rem;">
+                                        <input type="number" step="any" v-model.number="dev.irat" style="padding: 0.3rem; margin: 0; width: 100%; font-size: 0.9rem; background: rgba(0,0,0,0.3); min-width: 50px;">
+                                    </td>
+                                    <td v-if="group.parse_method && group.parse_method.startsWith('pd666_')" style="padding: 0.5rem;">
+                                        <input type="number" step="any" v-model.number="dev.urat" style="padding: 0.3rem; margin: 0; width: 100%; font-size: 0.9rem; background: rgba(0,0,0,0.3); min-width: 50px;">
+                                    </td>
+                                    <td style="padding: 0.5rem;">
+                                        <input type="text" readonly :value="getModbusHex(dev.slave_id, group.command, parseInt(dev.register_address_hex||'0', 16), dev.register_count)" style="padding: 0.3rem; margin: 0; width: 100%; font-size: 0.85rem; font-family: monospace; background: rgba(0,0,0,0.3); color: var(--accent-color); border: 1px solid var(--border-color); min-width: 110px;">
+                                    </td>
+                                    <td style="padding: 0.5rem; text-align: center;">
+                                        <label class="switch" style="transform: scale(0.7); margin: 0; display: inline-block; vertical-align: middle;">
+                                            <input type="checkbox" v-model="dev.alarm_enabled" :true-value="1" :false-value="0">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </td>
+                                    <td style="padding: 0.5rem;">
+                                        <div style="display: flex; align-items: center; gap: 0.2rem;" :style="{ opacity: dev.alarm_enabled ? 1 : 0.2, pointerEvents: dev.alarm_enabled ? 'auto' : 'none' }">
+                                            <input type="number" step="any" v-model.number="dev.limit_min" style="padding: 0.3rem; margin: 0; width: 55px; font-size: 0.85rem; background: rgba(0,0,0,0.3);" title="下限">
+                                            <span style="color: var(--text-secondary);">~</span>
+                                            <input type="number" step="any" v-model.number="dev.limit_max" style="padding: 0.3rem; margin: 0; width: 55px; font-size: 0.85rem; background: rgba(0,0,0,0.3);" title="上限">
+                                        </div>
+                                    </td>
+                                    <td style="padding: 0.5rem; text-align: center;">
+                                        <div style="display: flex; gap: 0.3rem; justify-content: center;">
+                                            <button class="btn btn-primary" @click="testSingleDevice(group, dev)" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; background-color: transparent; border: 1px solid var(--accent-color); color: var(--accent-color);">測試</button>
+                                            <button class="btn btn-primary" @click="saveGroup(group)" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; background-color: var(--success-color); color: #000; border: none;">儲存</button>
+                                            <button class="btn btn-danger" @click="removeDevice(group, index)" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; background: rgba(255,0,0,0.1);">刪除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="!group.devices || group.devices.length === 0">
+                                    <td colspan="9" style="text-align: center; color: var(--text-secondary); padding: 1rem;">
+                                        尚無設備，請點擊右上方新增 ID
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>
@@ -754,6 +847,20 @@
                 </div>
             </div>
         </main>
+
+        <!-- Execution Result Modal -->
+        <div v-if="execModal.show" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+            <div class="card" style="min-width: 300px; max-width: 500px; padding: 2rem; border-top: 4px solid" :style="{ borderTopColor: execModal.success ? '#10b981' : '#ef4444' }">
+                <h3 style="margin-top: 0; display: flex; align-items: center; gap: 0.5rem;" :style="{ color: execModal.success ? '#10b981' : '#ef4444' }">
+                    <span v-if="execModal.success">✅ 執行成功</span>
+                    <span v-else>❌ 執行失敗</span>
+                </h3>
+                <p style="margin: 1rem 0; white-space: pre-line;">{{ execModal.message }}</p>
+                <div style="text-align: right; margin-top: 1.5rem;">
+                    <button class="btn btn-primary" @click="execModal.show = false">關閉</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -766,6 +873,9 @@
                 const sysSettings = ref({});
                 const groups = ref([]);
                 const commandsList = ref([]);
+                const setupCommandsList = ref([]);
+                const setupCommandExec = ref({ slave_id: 1, selected_cmd_id: 'null', command: '', register_address: 0, write_value: '', read_count: 1 });
+                const execModal = ref({ show: false, success: false, message: '' });
                 const ports = ref([]);
                 const wifiList = ref([]);
                 const wifiScanned = ref(false);
@@ -825,6 +935,16 @@
                 const fetchCommands = async () => {
                     const res = await fetch('/api/rs485_commands');
                     commandsList.value = await res.json();
+                };
+
+                const fetchSetupCommands = async () => {
+                    const res = await fetch('/api/rs485_setup_commands');
+                    const data = await res.json();
+                    setupCommandsList.value = data.map(cmd => ({
+                        ...cmd,
+                        register_address_hex: (cmd.register_address || 0).toString(16).toUpperCase(),
+                        read_count: cmd.read_count || 1
+                    }));
                 };
 
                 const fetchGroups = async () => {
@@ -911,6 +1031,140 @@
                     }
                 };
 
+                const saveSetupCommands = async () => {
+                    try {
+                        const payload = setupCommandsList.value.map(cmd => ({
+                            ...cmd,
+                            register_address: parseInt(cmd.register_address_hex, 16) || 0,
+                            read_count: cmd.read_count || 1
+                        }));
+                        const res = await fetch('/api/rs485_setup_commands', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (res.ok) {
+                            alert('設定指令已儲存！');
+                            fetchSetupCommands();
+                        } else {
+                            alert('儲存失敗');
+                        }
+                    } catch (e) {
+                        alert('儲存發生錯誤: ' + e.message);
+                    }
+                };
+
+                const addSetupCommand = () => {
+                    setupCommandsList.value.push({ name: '', command: 'write_single_register', register_address_hex: '0', write_value: '', read_count: 1 });
+                };
+
+                const removeSetupCommand = (index) => {
+                    setupCommandsList.value.splice(index, 1);
+                };
+
+                const onSetupCommandSelect = () => {
+                    const selectedId = setupCommandExec.value.selected_cmd_id;
+                    if (selectedId !== 'null') {
+                        const cmd = setupCommandsList.value.find(c => c.id === selectedId || c.name === selectedId);
+                        if (cmd) {
+                            setupCommandExec.value.command = cmd.command;
+                            setupCommandExec.value.register_address_hex = cmd.register_address_hex;
+                            setupCommandExec.value.write_value = cmd.write_value;
+                            setupCommandExec.value.read_count = cmd.read_count || 1;
+                        }
+                    }
+                };
+
+                const setupCommandPreviewHex = () => {
+                    if (setupCommandExec.value.selected_cmd_id === 'null') return '';
+                    try {
+                        const slaveId = parseInt(setupCommandExec.value.slave_id) || 1;
+                        const cmdType = setupCommandExec.value.command;
+                        const startAddr = parseInt(setupCommandExec.value.register_address_hex, 16) || 0;
+                        const valStr = setupCommandExec.value.write_value || '';
+                        
+                        let buf = [];
+                        buf.push(slaveId);
+                        
+                        if (cmdType === 'read_holding_registers' || cmdType === 'read_input_registers') {
+                            const func = cmdType === 'read_holding_registers' ? 3 : 4;
+                            const count = setupCommandExec.value.read_count || 1;
+                            buf.push(func);
+                            buf.push((startAddr >> 8) & 0xFF);
+                            buf.push(startAddr & 0xFF);
+                            buf.push((count >> 8) & 0xFF);
+                            buf.push(count & 0xFF);
+                        } else if (cmdType === 'write_single_register') {
+                            buf.push(0x06);
+                            buf.push((startAddr >> 8) & 0xFF);
+                            buf.push(startAddr & 0xFF);
+                            const val = parseInt(valStr, 16) || 0;
+                            buf.push((val >> 8) & 0xFF);
+                            buf.push(val & 0xFF);
+                        } else if (cmdType === 'write_multiple_registers') {
+                            buf.push(0x10);
+                            buf.push((startAddr >> 8) & 0xFF);
+                            buf.push(startAddr & 0xFF);
+                            const vals = valStr.split(',').filter(v => v.trim()).map(v => parseInt(v.trim(), 16) || 0);
+                            const len = vals.length || 1;
+                            buf.push((len >> 8) & 0xFF);
+                            buf.push(len & 0xFF);
+                            buf.push(len * 2);
+                            const fillVals = vals.length ? vals : [0];
+                            for (let v of fillVals) {
+                                buf.push((v >> 8) & 0xFF);
+                                buf.push(v & 0xFF);
+                            }
+                        } else {
+                            return 'Unknown Command Type';
+                        }
+                        
+                        let crc = 0xFFFF;
+                        for (let pos = 0; pos < buf.length; pos++) {
+                            crc ^= buf[pos];
+                            for (let i = 0; i < 8; i++) {
+                                if ((crc & 1) !== 0) {
+                                    crc >>= 1;
+                                    crc ^= 0xA001;
+                                } else {
+                                    crc >>= 1;
+                                }
+                            }
+                        }
+                        buf.push(crc & 0xFF);
+                        buf.push((crc >> 8) & 0xFF);
+                        
+                        return buf.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+                    } catch (e) {
+                        return 'Invalid Input';
+                    }
+                };
+
+                const executeSetupCommand = async () => {
+                    if (setupCommandExec.value.selected_cmd_id === 'null') {
+                        alert('請先選擇指令');
+                        return;
+                    }
+                    if (!confirm(`確定要對 Slave ID: ${setupCommandExec.value.slave_id} 執行寫入指令嗎？`)) {
+                        return;
+                    }
+                    try {
+                        const res = await fetch('/api/execute_setup_command', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(setupCommandExec.value)
+                        });
+                        const result = await res.json();
+                        if (res.ok) {
+                            execModal.value = { show: true, success: true, message: result.message };
+                        } else {
+                            execModal.value = { show: true, success: false, message: result.message };
+                        }
+                    } catch (e) {
+                        execModal.value = { show: true, success: false, message: e.message };
+                    }
+                };
+
                 const testConnection = async (testType) => {
                     try {
                         sysSettings.value.telegram_recipients = JSON.stringify(telegramRecipientsList.value);
@@ -952,6 +1206,28 @@
                     }
                 };
 
+                const testSingleDevice = async (group, dev) => {
+                    const tempGroup = JSON.parse(JSON.stringify(group));
+                    tempGroup.devices = [dev];
+                    
+                    try {
+                        const res = await fetch('/api/test_rs485_group', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(tempGroup)
+                        });
+                        const result = await res.json();
+                        if (res.ok) {
+                            const parsedStr = typeof result.data === 'object' ? JSON.stringify(result.data) : result.data;
+                            alert('✅ ' + result.message + '\n\n解析結果: ' + parsedStr + '\n原始資料: ' + JSON.stringify(result.raw));
+                        } else {
+                            alert('❌ 測試失敗: \n' + result.message);
+                        }
+                    } catch (e) {
+                        alert('❌ 測試發生錯誤: \n' + e.message);
+                    }
+                };
+
                 const addCommand = () => {
                     commandsList.value.push({ name: '', command: 'read_holding_registers', parse_method: 'int16', register_address: 0, register_count: 1 });
                 };
@@ -969,6 +1245,7 @@
                         if (group.devices && group.devices.length > 0) {
                             group.devices.forEach(d => {
                                 d.register_address = c.register_address || 0;
+                                d.register_address_hex = (c.register_address || 0).toString(16).toUpperCase();
                                 d.register_count = c.register_count || 1;
                             });
                         }
@@ -989,6 +1266,7 @@
                     group.devices.push({
                         slave_id: 1,
                         register_address: defaultAddr,
+                        register_address_hex: defaultAddr.toString(16).toUpperCase(),
                         register_count: defaultCount,
                         irat: 1.0,
                         urat: 1.0,
@@ -1225,6 +1503,7 @@
                 onMounted(async () => {
                     await fetchSysSettings();
                     await fetchCommands();
+                    await fetchSetupCommands();
                     await fetchGroups();
                     await fetchPorts();
                     await fetchWifiStatus();
@@ -1315,11 +1594,11 @@
                 };
 
                 return {
-                    loading, activeTab, sysSettings, groups, ports, wifiList, wifiScanned, commandsList, wifiStatus, wifiProfiles,
+                    loading, activeTab, sysSettings, groups, ports, wifiList, wifiScanned, commandsList, setupCommandsList, setupCommandExec, execModal, wifiStatus, wifiProfiles,
                     systemLogs, autoRefreshLogs, fetchSystemLogs, toggleAutoRefreshLogs,
                     savedConfigs, newConfigName, saveConfig, loadConfig, deleteConfig, telegramRecipientsList,
                     fetchPorts, saveSysSettings, saveGroup, addDevice, removeDevice, getModbusHex,
-                    saveCommands, testConnection, testGroupConnection, addCommand, removeCommand, applyCommandTemplate,
+                    saveCommands, saveSetupCommands, addSetupCommand, removeSetupCommand, onSetupCommandSelect, setupCommandPreviewHex, executeSetupCommand, testConnection, testGroupConnection, testSingleDevice, addCommand, removeCommand, applyCommandTemplate,
                     scanWifi, connectWifi, fetchWifiStatus, hasProfile, deleteProfile, toggleAuto, editProfile, logout, rebootSystem,
                     tsStatus, tsAuthKey,
                     fetchTailscaleStatus,

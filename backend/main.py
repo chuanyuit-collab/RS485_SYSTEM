@@ -19,6 +19,11 @@ from rs485_worker import poll_devices
 
 app = FastAPI(title="RS485 Dashboard System")
 
+import logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+pymodbus_log = logging.getLogger('pymodbus')
+pymodbus_log.setLevel(logging.DEBUG)
+
 scheduler = BackgroundScheduler()
 
 # Function to update scheduler interval dynamically
@@ -258,6 +263,13 @@ def update_system_settings(settings: SystemSettingsUpdate, request: Request):
     ))
     conn.commit()
     conn.close()
+    
+    # 即時套用新的輪詢頻率
+    try:
+        scheduler.reschedule_job('poll_job', trigger='interval', seconds=settings.polling_interval)
+    except Exception as e:
+        print(f"Error rescheduling poll_job: {e}")
+        
     return {"status": "success"}
 
 class DeviceModel(BaseModel):
@@ -280,6 +292,7 @@ class GroupUpdate(BaseModel):
     limit_min: float
     limit_max: float
     command_name: str = ""
+    type_name: str = ""
     devices: List[DeviceModel]
 
 class CommandItemModel(BaseModel):
@@ -322,6 +335,150 @@ def update_rs485_commands(commands: List[CommandItemModel], request: Request):
     conn.commit()
     conn.close()
     return {"status": "success"}
+
+class SetupCommandItemModel(BaseModel):
+    id: int = None
+    name: str
+    command: str
+    register_address: int
+    write_value: str = ""
+    read_count: int = 1
+
+@app.get("/api/rs485_setup_commands")
+def get_rs485_setup_commands():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM rs485_setup_commands")
+    commands = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return commands
+
+@app.post("/api/rs485_setup_commands")
+def update_rs485_setup_commands(commands: List[SetupCommandItemModel], request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM rs485_setup_commands")
+    for cmd in commands:
+        if cmd.id is not None:
+            cursor.execute('''
+                INSERT INTO rs485_setup_commands (id, name, command, register_address, write_value, read_count)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (cmd.id, cmd.name, cmd.command, cmd.register_address, cmd.write_value, cmd.read_count))
+        else:
+            cursor.execute('''
+                INSERT INTO rs485_setup_commands (name, command, register_address, write_value, read_count)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (cmd.name, cmd.command, cmd.register_address, cmd.write_value, cmd.read_count))
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
+
+class ExecuteSetupCommandRequest(BaseModel):
+    slave_id: int
+    command: str
+    register_address: int
+    write_value: str = ""
+    read_count: int = 1
+
+@app.post("/api/execute_setup_command")
+def execute_setup_command(req: ExecuteSetupCommandRequest, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT serial_port, serial_baudrate, serial_bytesize, serial_parity, serial_stopbits FROM system_settings WHERE id=1")
+    sys_set = cursor.fetchone()
+    conn.close()
+    
+    if not sys_set or not sys_set['serial_port']:
+        return JSONResponse(status_code=400, content={"status": "error", "message": "尚未設定 Serial Port"})
+        
+    from pymodbus.client import ModbusSerialClient
+    from rs485_worker import rs485_lock
+    
+    client = None
+    try:
+        try:
+            with rs485_lock:
+                client = ModbusSerialClient(
+                    port=sys_set['serial_port'], 
+                    baudrate=sys_set['serial_baudrate'], 
+                    bytesize=sys_set['serial_bytesize'], 
+                    parity=sys_set['serial_parity'], 
+                    stopbits=sys_set['serial_stopbits'], 
+                    timeout=2
+                )
+        except TypeError:
+            with rs485_lock:
+                client = ModbusSerialClient(
+                    method='rtu', 
+                    port=sys_set['serial_port'], 
+                    baudrate=sys_set['serial_baudrate'], 
+                    bytesize=sys_set['serial_bytesize'], 
+                    parity=sys_set['serial_parity'], 
+                    stopbits=sys_set['serial_stopbits'], 
+                    timeout=2
+                )
+            
+        with rs485_lock:
+            if not client.connect():
+                return JSONResponse(status_code=400, content={"status": "error", "message": f"無法開啟 {sys_set['serial_port']}"})
+                
+            result = None
+            if req.command == 'write_single_register':
+                val = int(req.write_value, 16)
+                try:
+                    result = client.write_register(address=req.register_address, value=val, device_id=req.slave_id)
+                except TypeError:
+                    try:
+                        result = client.write_register(address=req.register_address, value=val, slave=req.slave_id)
+                    except TypeError:
+                        result = client.write_register(address=req.register_address, value=val, unit=req.slave_id)
+            elif req.command == 'write_multiple_registers':
+                vals = [int(v.strip(), 16) for v in req.write_value.split(',')]
+                try:
+                    result = client.write_registers(address=req.register_address, values=vals, device_id=req.slave_id)
+                except TypeError:
+                    try:
+                        result = client.write_registers(address=req.register_address, values=vals, slave=req.slave_id)
+                    except TypeError:
+                        result = client.write_registers(address=req.register_address, values=vals, unit=req.slave_id)
+            elif req.command == 'read_holding_registers':
+                try:
+                    result = client.read_holding_registers(address=req.register_address, count=req.read_count, device_id=req.slave_id)
+                except TypeError:
+                    try:
+                        result = client.read_holding_registers(address=req.register_address, count=req.read_count, slave=req.slave_id)
+                    except TypeError:
+                        result = client.read_holding_registers(address=req.register_address, count=req.read_count, unit=req.slave_id)
+            elif req.command == 'read_input_registers':
+                try:
+                    result = client.read_input_registers(address=req.register_address, count=req.read_count, device_id=req.slave_id)
+                except TypeError:
+                    try:
+                        result = client.read_input_registers(address=req.register_address, count=req.read_count, slave=req.slave_id)
+                    except TypeError:
+                        result = client.read_input_registers(address=req.register_address, count=req.read_count, unit=req.slave_id)
+            else:
+                return JSONResponse(status_code=400, content={"status": "error", "message": f"不支援的指令: {req.command}"})
+                
+        if result and not result.isError():
+            if req.command.startswith('read_'):
+                hex_vals = [hex(v) for v in result.registers]
+                return {"status": "success", "message": "讀取成功", "data": hex_vals}
+            else:
+                return {"status": "success", "message": "指令執行成功"}
+        else:
+            return JSONResponse(status_code=400, content={"status": "error", "message": "指令執行失敗或設備無回應 (Modbus Error)"})
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"status": "error", "message": str(e)})
+    finally:
+        with rs485_lock:
+            if client:
+                client.close()
 
 class TestConnectionRequest(BaseModel):
     test_type: str
@@ -483,9 +640,9 @@ def update_rs485_group(group: GroupUpdate, request: Request):
     cursor = conn.cursor()
     cursor.execute('''
         UPDATE rs485_groups SET
-        name=?, is_enabled=?, command=?, parse_method=?, limit_min=?, limit_max=?, command_name=?
+        name=?, is_enabled=?, command=?, parse_method=?, limit_min=?, limit_max=?, command_name=?, type_name=?
         WHERE id=?
-    ''', (group.name, group.is_enabled, group.command, group.parse_method, group.limit_min, group.limit_max, group.command_name, group.id))
+    ''', (group.name, group.is_enabled, group.command, group.parse_method, group.limit_min, group.limit_max, group.command_name, group.type_name, group.id))
     
     cursor.execute("DELETE FROM rs485_devices WHERE group_id=?", (group.id,))
     for dev in group.devices:

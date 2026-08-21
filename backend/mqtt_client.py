@@ -23,7 +23,7 @@ def publish_with_client(client, topic, data):
     if not client:
         return
     try:
-        msg_info = client.publish(topic, json.dumps(data))
+        msg_info = client.publish(topic, json.dumps(data, ensure_ascii=False))
         msg_info.wait_for_publish(timeout=2)
     except Exception as e:
         print(f"MQTT Publish Error: {e}")

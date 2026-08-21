@@ -94,7 +94,8 @@ def init_db():
         command_name TEXT DEFAULT '',
         parse_type TEXT DEFAULT 'int16',
         lower_limit REAL DEFAULT 0,
-        upper_limit REAL DEFAULT 100
+        upper_limit REAL DEFAULT 100,
+        type_name TEXT DEFAULT ''
     )
     ''')
 
@@ -114,6 +115,11 @@ def init_db():
         cursor.execute("ALTER TABLE rs485_groups ADD COLUMN parse_method TEXT DEFAULT 'int16'")
         cursor.execute("ALTER TABLE rs485_groups ADD COLUMN limit_min REAL DEFAULT 0")
         cursor.execute("ALTER TABLE rs485_groups ADD COLUMN limit_max REAL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE rs485_groups ADD COLUMN type_name TEXT DEFAULT ''")
     except sqlite3.OperationalError:
         pass
 
@@ -166,6 +172,28 @@ def init_db():
         cursor.execute('SELECT COUNT(*) FROM rs485_commands WHERE name = ?', (cmd[0],))
         if cursor.fetchone()[0] == 0:
             cursor.execute('INSERT INTO rs485_commands (name, command, parse_method, register_address, register_count) VALUES (?, ?, ?, ?, ?)', cmd)
+
+    # RS485 Setup Commands Table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS rs485_setup_commands (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        command TEXT,
+        register_address INTEGER DEFAULT 0,
+        write_value TEXT,
+        read_count INTEGER DEFAULT 1
+    )
+    ''')
+
+    # Seed default setup commands if missing
+    default_setup_commands = [
+        ('修改設備 ID (寫入單一暫存器)', 'write_single_register', 256, '2'),
+        ('修改 Baudrate (寫入單一暫存器)', 'write_single_register', 257, '2580')
+    ]
+    for cmd in default_setup_commands:
+        cursor.execute('SELECT COUNT(*) FROM rs485_setup_commands WHERE name = ?', (cmd[0],))
+        if cursor.fetchone()[0] == 0:
+            cursor.execute('INSERT INTO rs485_setup_commands (name, command, register_address, write_value, read_count) VALUES (?, ?, ?, ?, 1)', cmd)
 
     # RS485 Devices Table
     cursor.execute('''
