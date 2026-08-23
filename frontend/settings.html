@@ -368,8 +368,8 @@
                                 </select>
                             </div>
                             <div class="form-group" style="margin:0; flex: 1; min-width: 100px;">
-                                <label>位址(Dec)</label>
-                                <input type="number" v-model.number="cmd.register_address" placeholder="e.g. 8192">
+                                <label>位址(Hex)</label>
+                                <input type="text" v-model="cmd.register_address_hex" placeholder="e.g. 2000">
                             </div>
                             <div class="form-group" style="margin:0; flex: 1; min-width: 80px;">
                                 <label>長度</label>
@@ -543,8 +543,8 @@
                                     <th style="padding: 0.5rem; text-align: left; width: 60px; white-space: nowrap;">ID</th>
                                     <th style="padding: 0.5rem; text-align: left; width: 80px; white-space: nowrap;">位址(Hex)</th>
                                     <th style="padding: 0.5rem; text-align: left; width: 70px; white-space: nowrap;">長度</th>
-                                    <th v-if="group.parse_method && group.parse_method.startsWith('pd666_')" style="padding: 0.5rem; text-align: left; width: 70px; white-space: nowrap;">I倍率</th>
-                                    <th v-if="group.parse_method && group.parse_method.startsWith('pd666_')" style="padding: 0.5rem; text-align: left; width: 70px; white-space: nowrap;">V倍率</th>
+                                    <th v-if="isPowerMeterGroup(group)" style="padding: 0.5rem; text-align: left; width: 70px; white-space: nowrap;">I倍率</th>
+                                    <th v-if="isPowerMeterGroup(group)" style="padding: 0.5rem; text-align: left; width: 70px; white-space: nowrap;">V倍率</th>
                                     <th style="padding: 0.5rem; text-align: left; min-width: 120px;">發送預覽(HEX)</th>
                                     <th style="padding: 0.5rem; text-align: center; width: 80px; white-space: nowrap;">異常警報</th>
                                     <th style="padding: 0.5rem; text-align: left; width: 140px; white-space: nowrap;">範圍 (下限~上限)</th>
@@ -562,10 +562,10 @@
                                     <td style="padding: 0.5rem;">
                                         <input type="number" v-model="dev.register_count" min="1" style="padding: 0.3rem; margin: 0; width: 100%; font-size: 0.9rem; background: rgba(0,0,0,0.3); min-width: 50px;">
                                     </td>
-                                    <td v-if="group.parse_method && group.parse_method.startsWith('pd666_')" style="padding: 0.5rem;">
+                                    <td v-if="isPowerMeterGroup(group)" style="padding: 0.5rem;">
                                         <input type="number" step="any" v-model.number="dev.irat" style="padding: 0.3rem; margin: 0; width: 100%; font-size: 0.9rem; background: rgba(0,0,0,0.3); min-width: 50px;">
                                     </td>
-                                    <td v-if="group.parse_method && group.parse_method.startsWith('pd666_')" style="padding: 0.5rem;">
+                                    <td v-if="isPowerMeterGroup(group)" style="padding: 0.5rem;">
                                         <input type="number" step="any" v-model.number="dev.urat" style="padding: 0.3rem; margin: 0; width: 100%; font-size: 0.9rem; background: rgba(0,0,0,0.3); min-width: 50px;">
                                     </td>
                                     <td style="padding: 0.5rem;">
@@ -947,7 +947,11 @@
 
                 const fetchCommands = async () => {
                     const res = await fetch('/api/rs485_commands');
-                    commandsList.value = await res.json();
+                    const data = await res.json();
+                    commandsList.value = data.map(cmd => ({
+                        ...cmd,
+                        register_address_hex: (cmd.register_address || 0).toString(16).toUpperCase()
+                    }));
                 };
 
                 const fetchSetupCommands = async () => {
@@ -1030,10 +1034,14 @@
 
                 const saveCommands = async () => {
                     try {
+                        const payload = commandsList.value.map(cmd => ({
+                            ...cmd,
+                            register_address: parseInt(cmd.register_address_hex, 16) || 0
+                        }));
                         const res = await fetch('/api/rs485_commands', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(commandsList.value)
+                            body: JSON.stringify(payload)
                         });
                         if (res.ok) {
                             alert('自訂指令已儲存！');
@@ -1242,11 +1250,20 @@
                 };
 
                 const addCommand = (category = '其它') => {
-                    commandsList.value.push({ name: '', category: category, command: 'read_holding_registers', parse_method: 'int16', register_address: 0, register_count: 1 });
+                    commandsList.value.push({ name: '', category: category, command: 'read_holding_registers', parse_method: 'int16', register_address: 0, register_address_hex: '0', register_count: 1 });
                 };
 
                 const removeCommand = (index) => {
                     commandsList.value.splice(index, 1);
+                };
+
+                const isPowerMeterGroup = (group) => {
+                    if (group.parse_method && group.parse_method.startsWith('pd666_')) return true;
+                    if (group.command_name) {
+                        const cmd = commandsList.value.find(c => c.name === group.command_name);
+                        return cmd && cmd.category === '電錶';
+                    }
+                    return false;
                 };
 
                 const applyCommandTemplate = (group, commandName) => {
@@ -1611,7 +1628,7 @@
                     systemLogs, autoRefreshLogs, fetchSystemLogs, toggleAutoRefreshLogs,
                     savedConfigs, newConfigName, saveConfig, loadConfig, deleteConfig, telegramRecipientsList,
                     fetchPorts, saveSysSettings, saveGroup, addDevice, removeDevice, getModbusHex,
-                    saveCommands, saveSetupCommands, addSetupCommand, removeSetupCommand, onSetupCommandSelect, setupCommandPreviewHex, executeSetupCommand, testConnection, testGroupConnection, testSingleDevice, addCommand, removeCommand, applyCommandTemplate,
+                    saveCommands, saveSetupCommands, addSetupCommand, removeSetupCommand, onSetupCommandSelect, setupCommandPreviewHex, executeSetupCommand, testConnection, testGroupConnection, testSingleDevice, addCommand, removeCommand, applyCommandTemplate, isPowerMeterGroup,
                     scanWifi, connectWifi, fetchWifiStatus, hasProfile, deleteProfile, toggleAuto, editProfile, logout, rebootSystem,
                     tsStatus, tsAuthKey,
                     fetchTailscaleStatus,
