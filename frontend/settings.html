@@ -312,62 +312,66 @@
             <section v-show="activeTab === 'commands'" class="settings-section card" style="margin-bottom: 0;">
                 <h2>RS485 指令編輯</h2>
                 
-                <div v-for="(cmd, index) in commandsList" :key="index" class="group-card">
-                    <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
-                        <div class="form-group" style="margin:0; flex: 1; min-width: 150px;">
-                            <label v-if="index===0">指令名稱</label>
-                            <input type="text" v-model="cmd.name" placeholder="例如: 讀取溫度">
+                <div v-for="cat in ['流量計', '電錶', '感測器', '其它']" :key="cat">
+                    <h3 style="margin-top: 1.5rem; color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">{{ cat }}</h3>
+                    
+                    <div v-for="(cmd, index) in commandsList" :key="index" v-show="cmd.category === cat" class="group-card">
+                        <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                            <div class="form-group" style="margin:0; flex: 1; min-width: 150px;">
+                                <label>指令名稱</label>
+                                <input type="text" v-model="cmd.name" placeholder="例如: 讀取溫度">
+                            </div>
+                            <div class="form-group" style="margin:0; flex: 2; min-width: 180px;">
+                                <label>指令</label>
+                                <select v-model="cmd.command">
+                                    <option value="read_holding_registers">Read Holding Registers (0x03)</option>
+                                    <option value="read_input_registers">Read Input Registers (0x04)</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin:0; flex: 2; min-width: 200px;">
+                                <label>解析方式</label>
+                                <select v-model="cmd.parse_method">
+                                    <option value="int16">有號整數 (Int16)</option>
+                                    <option value="int16_div10">有號整數除以10 (溫度/濕度)</option>
+                                    <option value="uint16">無號整數 (UInt16)</option>
+                                    <option value="int32_be">有號整數 (Int32 Big Endian)</option>
+                                    <option value="float32_be">浮點數 (Float32 Big Endian)</option>
+                                    <option value="float32_le">浮點數 (Float32 Little Endian)</option>
+                                    <option value="float32_cdab_lmin">浮點數 Word Swap (流量轉 L/min)</option>
+                                    <option disabled style="font-weight: bold; color: var(--accent-color);">--- 水質檢測 ---</option>
+                                    <option value="ph_sensor">PH 讀值 (UInt16 * 0.01)</option>
+                                    <option value="ec_sensor">EC 讀值 (EC mS/cm, Temp °C)</option>
+                                    <option value="orp_sensor">ORP 讀值 (Signed Int16)</option>
+                                    <option value="do_sensor">DO 讀值 (DO mg/L, Temp °C - Float32 LE)</option>
+                                    <option disabled style="font-weight: bold; color: var(--accent-color);">--- 流量計專用 ---</option>
+                                    <option value="flowmeter_net_flow">流量計 - 净累積流量 (REAL4)</option>
+                                    <option value="flowmeter_temps">流量計 - 供回水温度 (2x REAL4)</option>
+                                    <option disabled style="font-weight: bold; color: var(--accent-color);">--- PD666 電表專用 ---</option>
+                                    <option value="pd666_voltage">三相電壓 (Va, Vb, Vc)</option>
+                                    <option value="pd666_current">三相電流 (Ia, Ib, Ic)</option>
+                                    <option value="pd666_active_power">三相有功功率 (Pa, Pb, Pc)</option>
+                                    <option value="pd666_reactive_power">三相無功功率 (Qa, Qb, Qc)</option>
+                                    <option value="pd666_power_factor">功率因數 (PF)</option>
+                                    <option value="pd666_frequency">頻率 (Hz)</option>
+                                    <option value="pd666_demand">有功功率需量 (DmPt)</option>
+                                    <option value="pd666_epi">正向有功總電能 (EPI)</option>
+                                    <option value="pd666_epe">反向有功總電能 (EPE)</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin:0; flex: 1; min-width: 100px;">
+                                <label>位址(Dec)</label>
+                                <input type="number" v-model.number="cmd.register_address" placeholder="e.g. 8192">
+                            </div>
+                            <div class="form-group" style="margin:0; flex: 1; min-width: 80px;">
+                                <label>長度</label>
+                                <input type="number" v-model.number="cmd.register_count" min="1">
+                            </div>
+                            <button class="btn btn-danger" @click="removeCommand(index)" style="padding: 0.75rem;">刪除</button>
                         </div>
-                        <div class="form-group" style="margin:0; flex: 2; min-width: 180px;">
-                            <label v-if="index===0">指令</label>
-                            <select v-model="cmd.command">
-                                <option value="read_holding_registers">Read Holding Registers (0x03)</option>
-                                <option value="read_input_registers">Read Input Registers (0x04)</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="margin:0; flex: 2; min-width: 200px;">
-                            <label v-if="index===0">解析方式</label>
-                            <select v-model="cmd.parse_method">
-                                <option value="int16">有號整數 (Int16)</option>
-                                <option value="int16_div10">有號整數除以10 (溫度/濕度)</option>
-                                <option value="uint16">無號整數 (UInt16)</option>
-                                <option value="int32_be">有號整數 (Int32 Big Endian)</option>
-                                <option value="float32_be">浮點數 (Float32 Big Endian)</option>
-                                <option value="float32_le">浮點數 (Float32 Little Endian)</option>
-                                <option value="float32_cdab_lmin">浮點數 Word Swap (流量轉 L/min)</option>
-                                <option disabled style="font-weight: bold; color: var(--accent-color);">--- 水質檢測 ---</option>
-                                <option value="ph_sensor">PH 讀值 (UInt16 * 0.01)</option>
-                                <option value="ec_sensor">EC 讀值 (EC mS/cm, Temp °C)</option>
-                                <option value="orp_sensor">ORP 讀值 (Signed Int16)</option>
-                                <option value="do_sensor">DO 讀值 (DO mg/L, Temp °C - Float32 LE)</option>
-                                <option disabled style="font-weight: bold; color: var(--accent-color);">--- 流量計專用 ---</option>
-                                <option value="flowmeter_net_flow">流量計 - 净累積流量 (REAL4)</option>
-                                <option value="flowmeter_temps">流量計 - 供回水温度 (2x REAL4)</option>
-                                <option disabled style="font-weight: bold; color: var(--accent-color);">--- PD666 電表專用 ---</option>
-                                <option value="pd666_voltage">三相電壓 (Va, Vb, Vc)</option>
-                                <option value="pd666_current">三相電流 (Ia, Ib, Ic)</option>
-                                <option value="pd666_active_power">三相有功功率 (Pa, Pb, Pc)</option>
-                                <option value="pd666_reactive_power">三相無功功率 (Qa, Qb, Qc)</option>
-                                <option value="pd666_power_factor">功率因數 (PF)</option>
-                                <option value="pd666_frequency">頻率 (Hz)</option>
-                                <option value="pd666_demand">有功功率需量 (DmPt)</option>
-                                <option value="pd666_epi">正向有功總電能 (EPI)</option>
-                                <option value="pd666_epe">反向有功總電能 (EPE)</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="margin:0; flex: 1; min-width: 100px;">
-                            <label v-if="index===0">位址(Dec)</label>
-                            <input type="number" v-model.number="cmd.register_address" placeholder="e.g. 8192">
-                        </div>
-                        <div class="form-group" style="margin:0; flex: 1; min-width: 80px;">
-                            <label v-if="index===0">長度</label>
-                            <input type="number" v-model.number="cmd.register_count" min="1">
-                        </div>
-                        <button class="btn btn-danger" @click="removeCommand(index)" style="padding: 0.75rem;">刪除</button>
                     </div>
+                    
+                    <button class="btn" @click="addCommand(cat)" style="margin-top: 1rem;">+ 新增 {{ cat }} 指令</button>
                 </div>
-                
-                <button class="btn" @click="addCommand" style="margin-top: 1rem;">+ 新增指令</button>
 
                 <div style="text-align: right; margin-top: 1rem;">
                     <button class="btn btn-primary" @click="saveCommands()">儲存自訂指令</button>
@@ -1228,8 +1232,8 @@
                     }
                 };
 
-                const addCommand = () => {
-                    commandsList.value.push({ name: '', command: 'read_holding_registers', parse_method: 'int16', register_address: 0, register_count: 1 });
+                const addCommand = (category = '其它') => {
+                    commandsList.value.push({ name: '', category: category, command: 'read_holding_registers', parse_method: 'int16', register_address: 0, register_count: 1 });
                 };
 
                 const removeCommand = (index) => {

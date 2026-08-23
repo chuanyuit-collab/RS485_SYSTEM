@@ -134,6 +134,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS rs485_commands (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
+        category TEXT DEFAULT '其它',
         command TEXT,
         parse_method TEXT,
         register_address INTEGER DEFAULT 0,
@@ -146,32 +147,37 @@ def init_db():
         cursor.execute("ALTER TABLE rs485_commands ADD COLUMN register_count INTEGER DEFAULT 1")
     except sqlite3.OperationalError:
         pass
+        
+    try:
+        cursor.execute("ALTER TABLE rs485_commands ADD COLUMN category TEXT DEFAULT '其它'")
+    except sqlite3.OperationalError:
+        pass
 
     # Seed default commands if missing
     default_commands = [
-        ('讀取數值 (Holding Int16)', 'read_holding_registers', 'int16', 0, 1),
-        ('讀取狀態 (Input UInt16)', 'read_input_registers', 'uint16', 0, 1),
-        ('流量計-瞬時流量', 'read_holding_registers', 'float32_cdab_lmin', 4, 2),
-        ('流量計-净累積流量(浮點形式)', 'read_holding_registers', 'flowmeter_net_flow', 114, 2),
-        ('流量計-供水温度/回水温度', 'read_holding_registers', 'flowmeter_temps', 32, 4),
-        ('三相線電壓 (Va, Vb, Vc)', 'read_holding_registers', 'pd666_voltage', 8192, 6),
-        ('三相線電流 (Ia, Ib, Ic)', 'read_holding_registers', 'pd666_current', 8204, 6),
-        ('三相線有功功率 (Pa, Pb, Pc)', 'read_holding_registers', 'pd666_active_power', 8212, 6),
-        ('三相線無功功率 (Qa, Qb, Qc)', 'read_holding_registers', 'pd666_reactive_power', 8220, 6),
-        ('功率因數', 'read_holding_registers', 'pd666_power_factor', 8234, 2),
-        ('頻率', 'read_holding_registers', 'pd666_frequency', 8260, 2),
-        ('總有功功率需量', 'read_holding_registers', 'pd666_demand', 8272, 2),
-        ('正向有功總電能', 'read_holding_registers', 'pd666_epi', 4126, 2),
-        ('反向有功總電能', 'read_holding_registers', 'pd666_epe', 4136, 2),
-        ('PH 讀值', 'read_holding_registers', 'ph_sensor', 0, 1),
-        ('EC 讀值 (含溫度)', 'read_holding_registers', 'ec_sensor', 0, 2),
-        ('ORP 讀值', 'read_holding_registers', 'orp_sensor', 0, 1),
-        ('DO 讀值 (含溫度)', 'read_holding_registers', 'do_sensor', 0, 4)
+        ('讀取數值 (Holding Int16)', 'read_holding_registers', 'int16', 0, 1, '其它'),
+        ('讀取狀態 (Input UInt16)', 'read_input_registers', 'uint16', 0, 1, '其它'),
+        ('流量計-瞬時流量', 'read_holding_registers', 'float32_cdab_lmin', 4, 2, '流量計'),
+        ('流量計-净累積流量(浮點形式)', 'read_holding_registers', 'flowmeter_net_flow', 114, 2, '流量計'),
+        ('流量計-供水温度/回水温度', 'read_holding_registers', 'flowmeter_temps', 32, 4, '流量計'),
+        ('三相線電壓 (Va, Vb, Vc)', 'read_holding_registers', 'pd666_voltage', 8192, 6, '電錶'),
+        ('三相線電流 (Ia, Ib, Ic)', 'read_holding_registers', 'pd666_current', 8204, 6, '電錶'),
+        ('三相線有功功率 (Pa, Pb, Pc)', 'read_holding_registers', 'pd666_active_power', 8212, 6, '電錶'),
+        ('三相線無功功率 (Qa, Qb, Qc)', 'read_holding_registers', 'pd666_reactive_power', 8220, 6, '電錶'),
+        ('功率因數', 'read_holding_registers', 'pd666_power_factor', 8234, 2, '電錶'),
+        ('頻率', 'read_holding_registers', 'pd666_frequency', 8260, 2, '電錶'),
+        ('總有功功率需量', 'read_holding_registers', 'pd666_demand', 8272, 2, '電錶'),
+        ('正向有功總電能', 'read_holding_registers', 'pd666_epi', 4126, 2, '電錶'),
+        ('反向有功總電能', 'read_holding_registers', 'pd666_epe', 4136, 2, '電錶'),
+        ('PH 讀值', 'read_holding_registers', 'ph_sensor', 0, 1, '感測器'),
+        ('EC 讀值 (含溫度)', 'read_holding_registers', 'ec_sensor', 0, 2, '感測器'),
+        ('ORP 讀值', 'read_holding_registers', 'orp_sensor', 0, 1, '感測器'),
+        ('DO 讀值 (含溫度)', 'read_holding_registers', 'do_sensor', 0, 4, '感測器')
     ]
     for cmd in default_commands:
         cursor.execute('SELECT COUNT(*) FROM rs485_commands WHERE name = ?', (cmd[0],))
         if cursor.fetchone()[0] == 0:
-            cursor.execute('INSERT INTO rs485_commands (name, command, parse_method, register_address, register_count) VALUES (?, ?, ?, ?, ?)', cmd)
+            cursor.execute('INSERT INTO rs485_commands (name, command, parse_method, register_address, register_count, category) VALUES (?, ?, ?, ?, ?, ?)', cmd)
 
     # RS485 Setup Commands Table
     cursor.execute('''

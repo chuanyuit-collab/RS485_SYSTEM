@@ -298,6 +298,7 @@ class GroupUpdate(BaseModel):
 class CommandItemModel(BaseModel):
     id: int = None
     name: str
+    category: str = "其它"
     command: str
     parse_method: str
     register_address: int
@@ -324,14 +325,14 @@ def update_rs485_commands(commands: List[CommandItemModel], request: Request):
         # Avoid passing id if it is None (new command) so it auto-increments
         if cmd.id is not None:
             cursor.execute('''
-                INSERT INTO rs485_commands (id, name, command, parse_method, register_address, register_count)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (cmd.id, cmd.name, cmd.command, cmd.parse_method, cmd.register_address, cmd.register_count))
+                INSERT INTO rs485_commands (id, name, command, parse_method, register_address, register_count, category)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (cmd.id, cmd.name, cmd.command, cmd.parse_method, cmd.register_address, cmd.register_count, cmd.category))
         else:
             cursor.execute('''
-                INSERT INTO rs485_commands (name, command, parse_method, register_address, register_count)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (cmd.name, cmd.command, cmd.parse_method, cmd.register_address, cmd.register_count))
+                INSERT INTO rs485_commands (name, command, parse_method, register_address, register_count, category)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (cmd.name, cmd.command, cmd.parse_method, cmd.register_address, cmd.register_count, cmd.category))
     conn.commit()
     conn.close()
     return {"status": "success"}

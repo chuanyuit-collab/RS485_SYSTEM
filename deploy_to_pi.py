@@ -105,7 +105,7 @@ def main():
         upload_dir_sftp(sftp, 'frontend', f"{target}/frontend")
         
     # 上傳設定檔
-    files_to_upload = ['requirements.txt', 'rs485_dashboard.service', 'setup_pi.sh']
+    files_to_upload = ['requirements.txt', 'rs485_dashboard.service', 'setup_pi.sh', 'migrate_db.py']
     for f in files_to_upload:
         if os.path.exists(f):
             print(f"Uploading {f}...")
@@ -116,8 +116,8 @@ def main():
     # 3. 執行遠端 setup_pi.sh，由於會用到 sudo，如果需要密碼這裡可以透過 echo 傳入
     print("\n--- 執行遠端設定腳本 (setup_pi.sh) ---")
     
-    # 將密碼自動傳入 sudo 以防跳出密碼詢問 (這是一個常見的自動部署技巧)
-    sudo_setup_cmd = f"cd {target} && chmod +x setup_pi.sh && echo '{password}' | sudo -S bash setup_pi.sh"
+    # 將密碼自動傳入 sudo 以防跳出密碼詢問
+    sudo_setup_cmd = f"cd {target} && python3 migrate_db.py && echo '{password}' | sudo -S systemctl restart rs485_dashboard"
     run_ssh_cmd(ssh, sudo_setup_cmd)
 
     ssh.close()
