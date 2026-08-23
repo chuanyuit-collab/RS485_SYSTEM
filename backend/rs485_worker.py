@@ -92,63 +92,63 @@ def parse_payload(registers, parse_method, irat=1.0, urat=1.0):
             if len(registers) < 6: return None
             b = struct.pack('>HHHHHH', *registers[0:6])
             v1, v2, v3 = struct.unpack('>fff', b)
-            return {"type": "Voltage", "Va": round(v1 * urat * 0.01, 1), "Vb": round(v2 * urat * 0.01, 1), "Vc": round(v3 * urat * 0.01, 1)}
+            return {"type": "Voltage", "Va": round(v1 * urat, 1), "Vb": round(v2 * urat, 1), "Vc": round(v3 * urat, 1)}
 
         # PD666 3-Phase Current
         elif parse_method == 'pd666_current':
             if len(registers) < 6: return None
             b = struct.pack('>HHHHHH', *registers[0:6])
             i1, i2, i3 = struct.unpack('>fff', b)
-            return {"type": "Current", "Ia": round(i1 * irat * 0.001, 3), "Ib": round(i2 * irat * 0.001, 3), "Ic": round(i3 * irat * 0.001, 3)}
+            return {"type": "Current", "Ia": round(i1 * irat, 3), "Ib": round(i2 * irat, 3), "Ic": round(i3 * irat, 3)}
 
         # PD666 3-Phase Active Power
         elif parse_method == 'pd666_active_power':
             if len(registers) < 6: return None
             b = struct.pack('>HHHHHH', *registers[0:6])
             p1, p2, p3 = struct.unpack('>fff', b)
-            return {"type": "Active_Power", "Pa": round(p1 * urat * irat * 0.01, 2), "Pb": round(p2 * urat * irat * 0.01, 2), "Pc": round(p3 * urat * irat * 0.01, 2)}
+            return {"type": "Active_Power", "Pa": round(p1 * urat * irat, 2), "Pb": round(p2 * urat * irat, 2), "Pc": round(p3 * urat * irat, 2)}
 
         # PD666 3-Phase Reactive Power
         elif parse_method == 'pd666_reactive_power':
             if len(registers) < 6: return None
             b = struct.pack('>HHHHHH', *registers[0:6])
             q1, q2, q3 = struct.unpack('>fff', b)
-            return {"type": "Reactive_Power", "Qa": round(q1 * urat * irat * 0.01, 2), "Qb": round(q2 * urat * irat * 0.01, 2), "Qc": round(q3 * urat * irat * 0.01, 2)}
+            return {"type": "Reactive_Power", "Qa": round(q1 * urat * irat, 2), "Qb": round(q2 * urat * irat, 2), "Qc": round(q3 * urat * irat, 2)}
 
         # PD666 Power Factor
         elif parse_method == 'pd666_power_factor':
             if len(registers) < 2: return None
             b = struct.pack('>HH', *registers[0:2])
             pf = struct.unpack('>f', b)[0]
-            return {"type": "Power_Factor", "PF": round(pf * 0.001, 4)}
+            return {"type": "Power_Factor", "PF": round(pf, 4)}
 
         # PD666 Frequency
         elif parse_method == 'pd666_frequency':
             if len(registers) < 2: return None
             b = struct.pack('>HH', *registers[0:2])
             hz = struct.unpack('>f', b)[0]
-            return {"type": "Frequency", "Hz": round(hz * 0.01, 2)}
+            return {"type": "Frequency", "Hz": round(hz, 2)}
 
         # PD666 Demand
         elif parse_method == 'pd666_demand':
             if len(registers) < 2: return None
             b = struct.pack('>HH', *registers[0:2])
             dm = struct.unpack('>f', b)[0]
-            return {"type": "Demand", "DmPt": round(dm * 0.01, 2)}
+            return {"type": "Demand", "DmPt": round(dm, 2)}
 
         # PD666 EPI
         elif parse_method == 'pd666_epi':
             if len(registers) < 2: return None
             b = struct.pack('>HH', *registers[0:2])
             val = struct.unpack('>f', b)[0]
-            return {"type": "EPI", "ImpEp": round(val * urat * irat * 0.1, 2)}
+            return {"type": "EPI", "ImpEp": round(val * urat * irat, 2)}
 
         # PD666 EPE
         elif parse_method == 'pd666_epe':
             if len(registers) < 2: return None
             b = struct.pack('>HH', *registers[0:2])
             val = struct.unpack('>f', b)[0]
-            return {"type": "EPE", "ExpEp": round(val * urat * irat * 0.1, 2)}
+            return {"type": "EPE", "ExpEp": round(val * urat * irat, 2)}
             
         # Int32 (2 registers, big endian)
         elif parse_method == 'int32_be':
