@@ -191,7 +191,54 @@
                         const data = await res.json();
                         
                         const labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
-                        const values = data.map(d => d.value);
+                        let datasets = [];
+                        
+                        let isJsonObject = false;
+                        if (data.length > 0 && typeof data[0].value === 'string' && (data[0].value.startsWith('{') || data[0].value.startsWith('['))) {
+                            try {
+                                JSON.parse(data[0].value);
+                                isJsonObject = true;
+                            } catch (e) {}
+                        }
+                        
+                        if (isJsonObject) {
+                            const parsedData = data.map(d => {
+                                try { return JSON.parse(d.value); } catch(e) { return {}; }
+                            });
+                            
+                            // Find all numeric keys from the last valid data point (ignoring 'type')
+                            let keys = [];
+                            for (let i = parsedData.length - 1; i >= 0; i--) {
+                                if (Object.keys(parsedData[i]).length > 0) {
+                                    keys = Object.keys(parsedData[i]).filter(k => k !== 'type' && typeof parsedData[i][k] === 'number');
+                                    break;
+                                }
+                            }
+                            
+                            const colors = ['#38bdf8', '#fbbf24', '#f87171', '#34d399', '#a78bfa'];
+                            
+                            keys.forEach((key, index) => {
+                                datasets.push({
+                                    label: key,
+                                    data: parsedData.map(d => d[key] !== undefined ? d[key] : null),
+                                    borderColor: colors[index % colors.length],
+                                    backgroundColor: colors[index % colors.length] + '1A',
+                                    borderWidth: 2,
+                                    fill: true,
+                                    tension: 0.4
+                                });
+                            });
+                        } else {
+                            datasets = [{
+                                label: '讀取值',
+                                data: data.map(d => parseFloat(d.value) || 0),
+                                borderColor: '#38bdf8',
+                                backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.4
+                            }];
+                        }
                         
                         const ctx = document.getElementById('historyChart').getContext('2d');
                         if (chartInstance) chartInstance.destroy();
@@ -200,21 +247,16 @@
                             type: 'line',
                             data: {
                                 labels: labels,
-                                datasets: [{
-                                    label: '讀取值',
-                                    data: values,
-                                    borderColor: '#38bdf8',
-                                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                                    borderWidth: 2,
-                                    fill: true,
-                                    tension: 0.4
-                                }]
+                                datasets: datasets
                             },
                             options: {
                                 responsive: true,
                                 maintainAspectRatio: false,
                                 plugins: {
-                                    legend: { display: false }
+                                    legend: { 
+                                        display: isJsonObject,
+                                        labels: { color: '#94a3b8' }
+                                    }
                                 },
                                 scales: {
                                     y: {
