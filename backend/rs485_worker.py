@@ -414,7 +414,7 @@ def poll_devices():
                                 if mqtt_client and should_publish:
                                     from mqtt_client import publish_with_client
                                     
-                                    topic_prefix = sys_set.get('mqtt_topic', '')
+                                    topic_prefix = sys_set.get('mqtt_topic', 'data')
                                     if sys_set.get('mqtt_use_mac_prefix', 0):
                                         import uuid
                                         mac = hex(uuid.getnode())[2:].upper()
@@ -423,8 +423,7 @@ def poll_devices():
                                         else:
                                             topic_prefix = mac
                                             
-                                    topic = f"{topic_prefix}/{group['name']}/{dev['slave_id']}" if topic_prefix else f"{group['name']}/{dev['slave_id']}"
-                                    
+                                    topic = topic_prefix if topic_prefix else "rs485/data"
                                     
                                     data_dict = val if isinstance(val, dict) else {"value": val}
                                     if 'type_name' in group and group['type_name']:
