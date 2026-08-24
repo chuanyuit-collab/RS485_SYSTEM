@@ -194,9 +194,18 @@
                         let datasets = [];
                         
                         let isJsonObject = false;
-                        if (data.length > 0 && typeof data[0].value === 'string' && (data[0].value.startsWith('{') || data[0].value.startsWith('['))) {
+                        let testVal = null;
+                        // Find the most recent non-null value that looks like JSON
+                        for (let i = data.length - 1; i >= 0; i--) {
+                            if (data[i].value && typeof data[i].value === 'string' && (data[i].value.startsWith('{') || data[i].value.startsWith('['))) {
+                                testVal = data[i].value;
+                                break;
+                            }
+                        }
+                        
+                        if (testVal) {
                             try {
-                                JSON.parse(data[0].value);
+                                JSON.parse(testVal);
                                 isJsonObject = true;
                             } catch (e) {}
                         }
