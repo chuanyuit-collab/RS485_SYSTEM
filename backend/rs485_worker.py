@@ -351,6 +351,24 @@ def poll_devices():
                                 continue
                         
                     if not result.isError():
+                        # Log raw data to file
+                        import os
+                        from datetime import datetime
+                        log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'logs')
+                        if not os.path.exists(log_dir):
+                            os.makedirs(log_dir)
+                            
+                        current_date = datetime.now().strftime("%Y%m%d")
+                        current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        log_filename = f"device_{dev['id']}_{current_date}.log"
+                        log_filepath = os.path.join(log_dir, log_filename)
+                        
+                        try:
+                            with open(log_filepath, 'a', encoding='utf-8') as f:
+                                f.write(f"[{current_time_str}] Group: {group['name']}, Slave: {dev['slave_id']}, Raw Registers: {result.registers}\n")
+                        except Exception as e:
+                            print(f"Failed to write log: {e}")
+
                         irat = dev['irat'] if 'irat' in dev.keys() else 1.0
                         urat = dev['urat'] if 'urat' in dev.keys() else 1.0
                         val = parse_payload(result.registers, group['parse_method'], irat, urat)

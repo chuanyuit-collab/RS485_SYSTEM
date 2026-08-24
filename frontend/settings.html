@@ -91,6 +91,10 @@
                         <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent-color);">🌐 遠端連線 (Tailscale)</h3>
                         <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">虛擬區域網路與遠端管理</p>
                     </div>
+                    <div class="card tab-card" :class="{ active: activeTab === 'raw_logs' }" @click="activeTab = 'raw_logs'">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent-color);">🗄️ RAW 數據日誌</h3>
+                        <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">檢視與下載原始通訊資料</p>
+                    </div>
                 </div>
 
                 <!-- Content Area -->
@@ -857,6 +861,44 @@
 
             </section>
 
+            <!-- RAW 數據日誌 (RAW Logs) -->
+            <section v-show="activeTab === 'raw_logs'" class="settings-section card" style="margin-bottom: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; color: var(--accent-color);">
+                        <span>🗄️</span> RAW 數據日誌 (RAW Logs)
+                    </h2>
+                    <button class="btn btn-primary" @click="fetchRawLogs" style="font-size: 0.85rem;">🔄 重新整理</button>
+                </div>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">這裡記錄了設備透過 RS485 讀取到的最原始暫存器資料，供除錯與驗證使用。</p>
+
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.95rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-secondary); text-align: left;">
+                                <th style="padding: 1rem 0.5rem;">檔案名稱</th>
+                                <th style="padding: 1rem 0.5rem;">大小</th>
+                                <th style="padding: 1rem 0.5rem;">最後更新時間</th>
+                                <th style="padding: 1rem 0.5rem; text-align: right;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="log in rawLogs" :key="log.filename" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                <td style="padding: 1rem 0.5rem; font-family: monospace; color: #4ade80;">{{ log.filename }}</td>
+                                <td style="padding: 1rem 0.5rem; color: var(--text-secondary);">{{ formatBytes(log.size) }}</td>
+                                <td style="padding: 1rem 0.5rem; color: var(--text-secondary);">{{ new Date(log.mtime * 1000).toLocaleString() }}</td>
+                                <td style="padding: 1rem 0.5rem; text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                    <button class="btn" @click="viewRawLog(log.filename)" style="background: #3b82f6; color: white; border: none; padding: 0.4rem 0.8rem; font-size: 0.85rem;">檢視</button>
+                                    <a :href="'/api/logs/' + log.filename + '/download'" target="_blank" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; text-decoration: none; display: inline-block;">下載</a>
+                                </td>
+                            </tr>
+                            <tr v-if="rawLogs.length === 0">
+                                <td colspan="4" style="padding: 2rem; text-align: center; color: var(--text-secondary);">目前沒有任何 RAW 日誌檔案</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
                 </div>
             </div>
         </main>
@@ -871,6 +913,19 @@
                 <p style="margin: 1rem 0; white-space: pre-line;">{{ execModal.message }}</p>
                 <div style="text-align: right; margin-top: 1.5rem;">
                     <button class="btn btn-primary" @click="execModal.show = false">關閉</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Raw Log View Modal -->
+        <div v-if="logViewModal.show" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+            <div class="card" style="width: 80%; max-width: 800px; padding: 2rem; border-top: 4px solid var(--accent-color);">
+                <h3 style="margin-top: 0; margin-bottom: 1rem; color: var(--accent-color);">檢視日誌: {{ logViewModal.filename }}</h3>
+                <div style="background: #111; color: #4ade80; padding: 1rem; border-radius: 8px; font-family: monospace; overflow-y: auto; height: 50vh; font-size: 0.9rem; border: 1px solid #333; margin-bottom: 1.5rem;">
+                    <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">{{ logViewModal.content || '讀取中...' }}</pre>
+                </div>
+                <div style="text-align: right;">
+                    <button class="btn btn-primary" @click="logViewModal.show = false">關閉</button>
                 </div>
             </div>
         </div>
@@ -903,6 +958,9 @@
                 const newConfigName = ref("");
                 
                 const telegramRecipientsList = ref([]);
+                
+                const rawLogs = ref([]);
+                const logViewModal = ref({ show: false, filename: '', content: '' });
 
                 const fetchSysSettings = async () => {
                     const res = await fetch('/api/system_settings');
@@ -943,6 +1001,39 @@
                         }
                         telegramRecipientsList.value = list;
                     }
+                };
+
+                const fetchRawLogs = async () => {
+                    try {
+                        const res = await fetch('/api/logs');
+                        if(res.ok) {
+                            rawLogs.value = await res.json();
+                        }
+                    } catch (e) {
+                        console.error('Failed to fetch raw logs', e);
+                    }
+                };
+
+                const viewRawLog = async (filename) => {
+                    logViewModal.value = { show: true, filename: filename, content: '讀取中...' };
+                    try {
+                        const res = await fetch(`/api/logs/${filename}`);
+                        if(res.ok) {
+                            const data = await res.json();
+                            logViewModal.value.content = data.content;
+                        } else {
+                            logViewModal.value.content = '讀取失敗。';
+                        }
+                    } catch (e) {
+                        logViewModal.value.content = '無法讀取日誌內容。';
+                    }
+                };
+
+                const formatBytes = (bytes) => {
+                    if(bytes === 0) return '0 Bytes';
+                    const k = 1024, dm = 2, sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
                 };
 
                 const fetchCommands = async () => {
@@ -1540,6 +1631,7 @@
                     await fetchWifiProfiles();
                     await fetchConfigs();
                     await fetchTailscaleStatus();
+                    await fetchRawLogs();
                     loading.value = false;
                 });
 

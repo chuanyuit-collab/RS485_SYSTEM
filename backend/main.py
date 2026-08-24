@@ -1262,6 +1262,72 @@ def uninstall_tailscale(request: Request):
     except Exception as e:
         return JSONResponse(status_code=400, content={"status": "error", "message": str(e)})
 
+# --- Log Management API ---
+from fastapi.responses import FileResponse
+
+@app.get("/api/logs")
+def get_logs(request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    log_dir = os.path.join(os.path.dirname(__file__), '..', 'database', 'logs')
+    if not os.path.exists(log_dir):
+        return []
+    
+    logs = []
+    for f in os.listdir(log_dir):
+        if f.endswith('.log'):
+            file_path = os.path.join(log_dir, f)
+            stat = os.stat(file_path)
+            logs.append({
+                "filename": f,
+                "size": stat.st_size,
+                "mtime": stat.st_mtime
+            })
+    # Sort by modification time descending
+    logs.sort(key=lambda x: x['mtime'], reverse=True)
+    return logs
+
+@app.get("/api/logs/{filename}")
+def view_log(filename: str, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if ".." in filename or "/" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+        
+    log_dir = os.path.join(os.path.dirname(__file__), '..', 'database', 'logs')
+    file_path = os.path.join(log_dir, filename)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Log not found")
+        
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            if len(content) > 100000:
+                content = "... (truncated) ...\n" + content[-100000:]
+        return {"filename": filename, "content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/logs/{filename}/download")
+def download_log(filename: str, request: Request):
+    # For file download, we can't always easily pass cookies in standard <a> tags if we want to just link it,
+    # but we will try. If token check fails via GET link, we might bypass it or use fetch + blob.
+    # To make it simple for <a> tag, we might skip auth for download if it's hard, but let's keep it for security.
+    # Actually, <a> tag with href WILL send cookies for the same domain!
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if ".." in filename or "/" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+        
+    log_dir = os.path.join(os.path.dirname(__file__), '..', 'database', 'logs')
+    file_path = os.path.join(log_dir, filename)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Log not found")
+        
+    return FileResponse(file_path, media_type='text/plain', filename=filename)
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
