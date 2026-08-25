@@ -360,12 +360,13 @@ def poll_devices():
                             
                         current_date = datetime.now().strftime("%Y%m%d")
                         current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        log_filename = f"device_{dev['id']}_{current_date}.log"
+                        log_filename = f"device_{dev['id']}_slave_{dev['slave_id']}_{current_date}.log"
                         log_filepath = os.path.join(log_dir, log_filename)
                         
                         try:
                             with open(log_filepath, 'a', encoding='utf-8') as f:
-                                f.write(f"[{current_time_str}] Group: {group['name']}, Slave: {dev['slave_id']}, Raw Registers: {result.registers}\n")
+                                hex_registers = [f"0x{r:04X}" for r in result.registers]
+                                f.write(f"[{current_time_str}] Group: {group['name']}, Slave: {dev['slave_id']}, Raw Registers: {hex_registers}\n")
                         except Exception as e:
                             print(f"Failed to write log: {e}")
 
