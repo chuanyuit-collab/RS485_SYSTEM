@@ -16,6 +16,7 @@ from io import StringIO
 from apscheduler.schedulers.background import BackgroundScheduler
 from database import get_db_connection, init_db
 from rs485_worker import poll_devices
+from gpio_worker import start_gpio_service, gpio_state, write_output
 
 app = FastAPI(title="RS485 Dashboard System")
 
@@ -78,6 +79,10 @@ def check_and_reconnect_wifi():
 def startup_event():
     init_db()
     
+    conn = get_db_connection()
+    start_gpio_service(conn)
+    conn.close()
+    
     import threading
     threading.Thread(target=check_and_reconnect_wifi, daemon=True).start()
     
@@ -137,6 +142,30 @@ async def read_login():
     if os.path.exists(login_path):
         return FileResponse(login_path)
     return "<h1>Login page not found</h1>"
+
+@app.get("/gpio", response_class=HTMLResponse)
+async def read_gpio(request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        return RedirectResponse(url="/login")
+    gpio_path = os.path.join(frontend_path, 'gpio.html')
+    if os.path.exists(gpio_path):
+        return FileResponse(gpio_path)
+    return "<h1>GPIO page not found</h1>"
+
+@app.get("/api/gpio/status")
+def get_gpio_status():
+    return {"status": "success", "data": gpio_state}
+
+class GpioSetRequest(BaseModel):
+    pin: int
+    state: int
+
+@app.post("/api/gpio/set")
+def set_gpio(req: GpioSetRequest, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        return JSONResponse(status_code=401, content={"status": "error", "message": "Unauthorized"})
+    write_output(req.pin, req.state)
+    return {"status": "success", "message": "GPIO state updated", "data": gpio_state}
 
 @app.get("/settings", response_class=HTMLResponse)
 async def read_settings(request: Request):
@@ -383,6 +412,45 @@ class ExecuteSetupCommandRequest(BaseModel):
     write_value: str = ""
     read_count: int = 1
 
+def get_raw_rtu_response(slave_id: int, req_command: str, result) -> str:
+    import struct
+    try:
+        fc = 0
+        pdu = b''
+        if req_command == 'read_holding_registers':
+            fc = 0x03
+            byte_count = len(result.registers) * 2
+            pdu = bytes([fc, byte_count]) + b''.join(struct.pack('>H', v) for v in result.registers)
+        elif req_command == 'read_input_registers':
+            fc = 0x04
+            byte_count = len(result.registers) * 2
+            pdu = bytes([fc, byte_count]) + b''.join(struct.pack('>H', v) for v in result.registers)
+        elif req_command == 'write_single_register':
+            fc = 0x06
+            pdu = bytes([fc]) + struct.pack('>H', result.address) + struct.pack('>H', result.value)
+        elif req_command == 'write_multiple_registers':
+            fc = 0x10
+            pdu = bytes([fc]) + struct.pack('>H', result.address) + struct.pack('>H', result.count)
+        else:
+            return ""
+            
+        adu_without_crc = bytes([slave_id]) + pdu
+        
+        crc = 0xFFFF
+        for b in adu_without_crc:
+            crc ^= b
+            for _ in range(8):
+                if crc & 1:
+                    crc >>= 1
+                    crc ^= 0xA001
+                else:
+                    crc >>= 1
+        
+        adu = adu_without_crc + crc.to_bytes(2, byteorder='little')
+        return ' '.join(f'{b:02X}' for b in adu)
+    except Exception as e:
+        return f"Raw Error: {e}"
+
 @app.post("/api/execute_setup_command")
 def execute_setup_command(req: ExecuteSetupCommandRequest, request: Request):
     if request.cookies.get("session_token") != "admin_session":
@@ -467,11 +535,12 @@ def execute_setup_command(req: ExecuteSetupCommandRequest, request: Request):
                 return JSONResponse(status_code=400, content={"status": "error", "message": f"不支援的指令: {req.command}"})
                 
         if result and not result.isError():
+            raw_hex_str = get_raw_rtu_response(req.slave_id, req.command, result)
             if req.command.startswith('read_'):
-                hex_vals = [hex(v) for v in result.registers]
-                return {"status": "success", "message": "讀取成功", "data": hex_vals}
+                return {"status": "success", "message": f"讀取成功\nRAW 回傳指令: {raw_hex_str}", "data": result.registers}
             else:
-                return {"status": "success", "message": "指令執行成功"}
+                msg = f"指令執行成功\nRAW 回傳指令: {raw_hex_str}"
+                return {"status": "success", "message": msg}
         else:
             return JSONResponse(status_code=400, content={"status": "error", "message": "指令執行失敗或設備無回應 (Modbus Error)"})
     except Exception as e:
@@ -727,7 +796,8 @@ def test_rs485_group(group: GroupUpdate, request: Request):
                 
         if result and not result.isError():
             val = parse_payload(result.registers, group.parse_method, dev.irat, dev.urat)
-            return {"status": "success", "message": "連線測試成功", "data": val, "raw": result.registers}
+            raw_hex_str = get_raw_rtu_response(dev.slave_id, group.command, result)
+            return {"status": "success", "message": "連線測試成功", "data": val, "raw": raw_hex_str}
         else:
             return JSONResponse(status_code=400, content={"status": "error", "message": "連線逾時或設備無回應 (Modbus Error)"})
     except Exception as e:

@@ -46,9 +46,10 @@
 <body>
     <div id="app" class="container">
         <header>
-            <h1>智慧管理平台 - 參數設定 <span style="font-size: 0.5em; color: var(--text-secondary);">v1.0.1</span></h1>
+            <h1>智慧管理平台 - 參數設定 <span style="font-size: 0.5em; color: var(--text-secondary);">v1.0.2</span></h1>
             <nav style="display: flex; gap: 1rem; align-items: center;">
                 <a href="/" class="nav-link">儀表板</a>
+                <a href="/gpio" class="nav-link">遠端控制 (GPIO)</a>
                 <a href="/settings" class="nav-link" style="color: var(--text-primary); background: rgba(255,255,255,0.05);">系統設定</a>
                 <button class="btn" @click="rebootSystem" style="padding: 0.4rem 1rem; background-color: #f59e0b; color: #fff; border: none;">重新開機</button>
                 <button class="btn btn-danger" @click="logout" style="padding: 0.4rem 1rem;">登出</button>
@@ -418,7 +419,10 @@
                         <div class="form-group" style="margin:0; flex: 2; min-width: 150px;">
                             <label v-if="index===0">{{ cmd.command.startsWith('read') ? '讀取長度' : '寫入值(Hex)' }}</label>
                             <input v-if="cmd.command.startsWith('read')" type="number" min="1" v-model.number="cmd.read_count" placeholder="讀取幾個 Register">
-                            <input v-else type="text" v-model="cmd.write_value" placeholder="多個用逗號隔開 (如 A, FF)">
+                            <div v-else style="display: flex; gap: 0.5rem;">
+                                <input type="text" v-model="cmd.write_value" @input="updateWriteValueDec(cmd)" placeholder="Hex (如 A, FF)" style="width: 50%;">
+                                <input type="text" v-model="cmd.write_value_dec" @input="updateWriteValueHex(cmd)" placeholder="Dec (如 10, 255)" style="width: 50%;">
+                            </div>
                         </div>
                         <button class="btn btn-danger" @click="removeSetupCommand(index)" style="padding: 0.75rem;">刪除</button>
                     </div>
@@ -445,9 +449,12 @@
                             </select>
                         </div>
                         <div class="form-group" style="margin:0; flex: 2; min-width: 150px;" v-if="setupCommandExec.selected_cmd_id !== 'null'">
-                            <label>{{ setupCommandExec.command.startsWith('read') ? '讀取長度' : '確認寫入值(Hex, 可修改)' }}</label>
+                            <label>{{ setupCommandExec.command.startsWith('read') ? '讀取長度' : '確認寫入值(可修改)' }}</label>
                             <input v-if="setupCommandExec.command.startsWith('read')" type="number" min="1" v-model.number="setupCommandExec.read_count">
-                            <input v-else type="text" v-model="setupCommandExec.write_value">
+                            <div v-else style="display: flex; gap: 0.5rem;">
+                                <input type="text" v-model="setupCommandExec.write_value" @input="updateExecWriteValueDec" placeholder="Hex">
+                                <input type="text" v-model="setupCommandExec.write_value_dec" @input="updateExecWriteValueHex" placeholder="Dec">
+                            </div>
                         </div>
                         <div style="flex: 1; min-width: 150px;" v-if="setupCommandExec.selected_cmd_id !== 'null'">
                             <label style="display:block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">發送預覽 (Hex)</label>
@@ -942,7 +949,7 @@
                 const groups = ref([]);
                 const commandsList = ref([]);
                 const setupCommandsList = ref([]);
-                const setupCommandExec = ref({ slave_id: 1, selected_cmd_id: 'null', command: '', register_address: 0, write_value: '', read_count: 1 });
+                const setupCommandExec = ref({ slave_id: 1, selected_cmd_id: 'null', command: '', register_address: 0, write_value: '', write_value_dec: '', read_count: 1 });
                 const execModal = ref({ show: false, success: false, message: '' });
                 const ports = ref([]);
                 const wifiList = ref([]);
@@ -1048,11 +1055,16 @@
                 const fetchSetupCommands = async () => {
                     const res = await fetch('/api/rs485_setup_commands');
                     const data = await res.json();
-                    setupCommandsList.value = data.map(cmd => ({
-                        ...cmd,
-                        register_address_hex: (cmd.register_address || 0).toString(16).toUpperCase(),
-                        read_count: cmd.read_count || 1
-                    }));
+                    setupCommandsList.value = data.map(cmd => {
+                        const newCmd = {
+                            ...cmd,
+                            register_address_hex: (cmd.register_address || 0).toString(16).toUpperCase(),
+                            read_count: cmd.read_count || 1,
+                            write_value_dec: ''
+                        };
+                        updateWriteValueDec(newCmd);
+                        return newCmd;
+                    });
                 };
 
                 const fetchGroups = async () => {
@@ -1167,7 +1179,7 @@
                 };
 
                 const addSetupCommand = () => {
-                    setupCommandsList.value.push({ name: '', command: 'write_single_register', register_address_hex: '0', write_value: '', read_count: 1 });
+                    setupCommandsList.value.push({ name: '', command: 'write_single_register', register_address_hex: '0', write_value: '', write_value_dec: '', read_count: 1 });
                 };
 
                 const removeSetupCommand = (index) => {
@@ -1182,6 +1194,7 @@
                             setupCommandExec.value.command = cmd.command;
                             setupCommandExec.value.register_address_hex = cmd.register_address_hex;
                             setupCommandExec.value.write_value = cmd.write_value;
+                            setupCommandExec.value.write_value_dec = cmd.write_value_dec;
                             setupCommandExec.value.read_count = cmd.read_count || 1;
                         }
                     }
@@ -1261,10 +1274,12 @@
                         return;
                     }
                     try {
+                        const payload = { ...setupCommandExec.value };
+                        payload.register_address = parseInt(payload.register_address_hex, 16) || 0;
                         const res = await fetch('/api/execute_setup_command', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(setupCommandExec.value)
+                            body: JSON.stringify(payload)
                         });
                         const result = await res.json();
                         if (res.ok) {
@@ -1715,11 +1730,37 @@
                     }
                 };
 
+                    const updateWriteValueDec = (cmd) => {
+                        if (!cmd.write_value) {
+                            cmd.write_value_dec = '';
+                            return;
+                        }
+                        const hexes = cmd.write_value.split(',');
+                        cmd.write_value_dec = hexes.map(h => {
+                            const val = parseInt(h.trim(), 16);
+                            return isNaN(val) ? '' : val.toString();
+                        }).join(', ');
+                    };
+                    const updateWriteValueHex = (cmd) => {
+                        if (!cmd.write_value_dec) {
+                            cmd.write_value = '';
+                            return;
+                        }
+                        const decs = cmd.write_value_dec.split(',');
+                        cmd.write_value = decs.map(d => {
+                            const val = parseInt(d.trim(), 10);
+                            return isNaN(val) ? '' : val.toString(16).toUpperCase();
+                        }).join(', ');
+                    };
+                    const updateExecWriteValueDec = () => updateWriteValueDec(setupCommandExec.value);
+                    const updateExecWriteValueHex = () => updateWriteValueHex(setupCommandExec.value);
+
                 return {
                     loading, activeTab, sysSettings, groups, ports, wifiList, wifiScanned, commandsList, setupCommandsList, setupCommandExec, execModal, wifiStatus, wifiProfiles,
                     systemLogs, autoRefreshLogs, fetchSystemLogs, toggleAutoRefreshLogs,
                     savedConfigs, newConfigName, saveConfig, loadConfig, deleteConfig, telegramRecipientsList,
                     fetchPorts, saveSysSettings, saveGroup, addDevice, removeDevice, getModbusHex,
+                    updateWriteValueDec, updateWriteValueHex, updateExecWriteValueDec, updateExecWriteValueHex,
                     saveCommands, saveSetupCommands, addSetupCommand, removeSetupCommand, onSetupCommandSelect, setupCommandPreviewHex, executeSetupCommand, testConnection, testGroupConnection, testSingleDevice, addCommand, removeCommand, applyCommandTemplate, isPowerMeterGroup,
                     scanWifi, connectWifi, fetchWifiStatus, hasProfile, deleteProfile, toggleAuto, editProfile, logout, rebootSystem,
                     tsStatus, tsAuthKey,

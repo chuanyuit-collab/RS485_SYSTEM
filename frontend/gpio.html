@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPIO 工業控制面板</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #121417;
+            --panel-bg: linear-gradient(145deg, #1f2329, #1a1d22);
+            --panel-border: #2c313a;
+            --text-main: #e5e5e5;
+            --text-muted: #8b929e;
+            --led-off: #2a2a2a;
+            --led-on-green: #00ff41;
+            --led-on-red: #ff3333;
+            --accent: #00a8ff;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: radial-gradient(circle at 50% 50%, #1e2229 0%, #121417 100%);
+            color: var(--text-main);
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--panel-border);
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            margin: 0;
+            color: var(--accent);
+            text-shadow: 0 0 10px rgba(0, 168, 255, 0.5);
+            letter-spacing: 2px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            margin-top: 10px;
+        }
+
+        .panel-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .control-panel {
+            background: var(--panel-bg);
+            border: 2px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 25px;
+            flex: 1;
+            min-width: 300px;
+            box-shadow: 
+                inset 0 1px 1px rgba(255,255,255,0.05),
+                0 10px 20px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        /* Screw details for industrial look */
+        .control-panel::before, .control-panel::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #444;
+            border-radius: 50%;
+            box-shadow: inset 0 -1px 2px rgba(0,0,0,0.8), inset 0 1px 2px rgba(255,255,255,0.3);
+        }
+        .control-panel::before { top: 10px; left: 10px; }
+        .control-panel::after { top: 10px; right: 10px; }
+
+        .panel-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            color: #fff;
+            text-align: center;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .io-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+        }
+
+        .io-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+            padding: 15px 10px;
+            border-radius: 8px;
+            border: 1px solid #2a2a2a;
+        }
+
+        .io-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        /* LED Indicator */
+        .led {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--led-off);
+            box-shadow: 
+                inset 0 2px 4px rgba(0,0,0,0.6),
+                inset 0 -1px 2px rgba(255,255,255,0.2),
+                0 0 0 2px #111;
+            transition: all 0.2s ease;
+        }
+
+        .led.on {
+            background-color: var(--led-on-green);
+            box-shadow: 
+                inset 0 1px 2px rgba(255,255,255,0.4),
+                0 0 10px var(--led-on-green),
+                0 0 20px var(--led-on-green);
+        }
+
+        /* Heavy Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 100px;
+            background: #222;
+            border-radius: 8px;
+            border: 2px solid #111;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
+            cursor: pointer;
+        }
+
+        .toggle-switch::before {
+            content: 'ON';
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .toggle-switch::after {
+            content: 'OFF';
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .toggle-handle {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(to bottom, #d4d4d4, #888);
+            border-radius: 5px;
+            left: 8px;
+            bottom: 8px; /* OFF position */
+            box-shadow: 
+                0 -2px 5px rgba(255,255,255,0.5) inset,
+                0 5px 10px rgba(0,0,0,0.8);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border-bottom: 4px solid #555;
+        }
+
+        .toggle-switch.active .toggle-handle {
+            bottom: 48px; /* ON position */
+            background: linear-gradient(to bottom, #fff, #aaa);
+            border-bottom: none;
+            border-top: 4px solid #555;
+            box-shadow: 
+                0 2px 5px rgba(255,255,255,0.5) inset,
+                0 -5px 10px rgba(0,0,0,0.8);
+        }
+
+        .toggle-switch.active::before { color: var(--led-on-red); text-shadow: 0 0 5px var(--led-on-red); }
+        .toggle-switch:not(.active)::after { color: #fff; }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .status-bar {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--led-on-green);
+            margin-right: 5px;
+        }
+        .status-indicator.offline {
+            background-color: var(--led-on-red);
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <h1>SYS-GPIO CONTROL</h1>
+            <p>Industrial IO Monitoring & Actuation Panel</p>
+            <a href="/" class="back-link">← 回到主儀表板</a>
+        </div>
+
+        <div class="panel-container">
+            <!-- Inputs Panel -->
+            <div class="control-panel">
+                <div class="panel-title">DIGITAL INPUTS</div>
+                <div class="io-grid">
+                    <div class="io-item" v-for="(state, pin) in gpioInputs" :key="'in'+pin">
+                        <div class="io-label">GPIO {{ pin }}</div>
+                        <div class="led" :class="{ on: state === 1 || state === true }"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Outputs Panel -->
+            <div class="control-panel">
+                <div class="panel-title">RELAY OUTPUTS</div>
+                <div class="io-grid">
+                    <div class="io-item" v-for="(state, pin) in gpioOutputs" :key="'out'+pin">
+                        <div class="io-label">GPIO {{ pin }}</div>
+                        <div class="toggle-switch" :class="{ active: state === 1 || state === true }" @click="toggleOutput(pin, state)">
+                            <div class="toggle-handle"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <span class="status-indicator" :class="{ offline: !connected }"></span>
+            {{ connected ? 'System Online (Live Data)' : 'System Offline - Attempting Reconnect...' }}
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted, onUnmounted } = Vue;
+
+        createApp({
+            setup() {
+                const gpioInputs = ref({});
+                const gpioOutputs = ref({});
+                const connected = ref(false);
+                let pollTimer = null;
+
+                const fetchStatus = async () => {
+                    try {
+                        const res = await fetch('/api/gpio/status');
+                        if (res.ok) {
+                            const result = await res.json();
+                            if (result.data) {
+                                gpioInputs.value = result.data.inputs || {};
+                                gpioOutputs.value = result.data.outputs || {};
+                            }
+                            connected.value = true;
+                        } else {
+                            connected.value = false;
+                        }
+                    } catch (e) {
+                        connected.value = false;
+                    }
+                };
+
+                const toggleOutput = async (pin, currentState) => {
+                    // Optimistic UI update
+                    const newState = currentState ? 0 : 1;
+                    gpioOutputs.value[pin] = newState;
+
+                    try {
+                        await fetch('/api/gpio/set', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ pin: parseInt(pin), state: newState })
+                        });
+                        // Fast refresh to sync actual state
+                        setTimeout(fetchStatus, 100);
+                    } catch (e) {
+                        console.error('Failed to set GPIO:', e);
+                        // Revert on failure
+                        gpioOutputs.value[pin] = currentState;
+                    }
+                };
+
+                onMounted(() => {
+                    fetchStatus();
+                    pollTimer = setInterval(fetchStatus, 500); // Poll every 500ms
+                });
+
+                onUnmounted(() => {
+                    if (pollTimer) clearInterval(pollTimer);
+                });
+
+                return {
+                    gpioInputs, gpioOutputs, connected, toggleOutput
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

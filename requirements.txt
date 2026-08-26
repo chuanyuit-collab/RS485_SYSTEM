@@ -5,4 +5,4 @@ paho-mqtt
 requests
 pyserial
 APScheduler
-psutil
+psutilRPi.GPIO
