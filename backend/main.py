@@ -20,7 +20,7 @@ from gpio_worker import start_gpio_service, gpio_state, write_output
 import npc_manager
 import location_manager
 
-app = FastAPI(title="RS485 Dashboard System")
+app = FastAPI(title="RS485 Management API", description="DESIGN BY CHEN YUNG SHENG")
 
 import logging
 # DESIGN BY CHEN YUNG SHENG
