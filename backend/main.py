@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel
@@ -17,6 +17,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from database import get_db_connection, init_db
 from rs485_worker import poll_devices
 from gpio_worker import start_gpio_service, gpio_state, write_output
+import npc_manager
+import location_manager
 
 app = FastAPI(title="RS485 Dashboard System")
 
@@ -1398,6 +1400,112 @@ def download_log(filename: str, request: Request):
         raise HTTPException(status_code=404, detail="Log not found")
         
     return FileResponse(file_path, media_type='text/plain', filename=filename)
+
+# --- NPC Integration Endpoints ---
+
+@app.get("/api/npc/status")
+def npc_status():
+    return npc_manager.status()
+
+class NpcParseRequest(BaseModel):
+    command_text: str
+
+@app.post("/api/npc/parse")
+def npc_parse(req: NpcParseRequest):
+    res = npc_manager.parse_command(req.command_text)
+    if res:
+        return {"status": "success", "data": res}
+    return {"status": "error", "message": "無法解析該指令"}
+
+class NpcInstallRequest(BaseModel):
+    server: str
+    vkey: str
+    type: str
+
+@app.post("/api/npc/install")
+def npc_install(req: NpcInstallRequest, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    success, msg = npc_manager.install(req.server, req.vkey, req.type)
+    if success:
+        return {"status": "success", "message": msg}
+    return {"status": "error", "message": msg}
+
+class NpcControlRequest(BaseModel):
+    action: str
+
+@app.post("/api/npc/control")
+def npc_control(req: NpcControlRequest, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    success, msg = npc_manager.control(req.action)
+    if success:
+        return {"status": "success", "message": msg}
+    return {"status": "error", "message": msg}
+
+@app.post("/api/npc/uninstall")
+def npc_uninstall(request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    success, msg = npc_manager.uninstall()
+    if success:
+        return {"status": "success", "message": msg}
+    return {"status": "error", "message": msg}
+
+@app.post("/api/npc/download")
+def npc_download(request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    success, msg = npc_manager.download_npc()
+    if success:
+        return {"status": "success", "message": msg}
+    return {"status": "error", "message": msg}
+
+@app.post("/api/npc/upload")
+async def npc_upload(file: UploadFile = File(...), request: Request = None):
+    if request and request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        content = await file.read()
+        dest_path = "/usr/bin/npc"
+        with open(dest_path, "wb") as f:
+            f.write(content)
+        os.chmod(dest_path, 0o755)
+        return {"status": "success", "message": "NPC 執行檔已成功上傳並設定權限"}
+    except Exception as e:
+        return {"status": "error", "message": f"上傳失敗: {e}"}
+
+# --- Location Integration Endpoints ---
+@app.get("/api/location")
+def get_location_api(request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return location_manager.get_location()
+
+class LocationSaveRequest(BaseModel):
+    lat: float
+    lon: float
+    label: str = ""
+
+@app.post("/api/location")
+def save_location_api(req: LocationSaveRequest, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    success, data = location_manager.save_location(req.lat, req.lon, req.label)
+    if success:
+        return {"status": "success", "data": data}
+    return {"status": "error", "message": data}
+
+@app.post("/api/location/push")
+def push_location_api(req: LocationSaveRequest, request: Request):
+    if request.cookies.get("session_token") != "admin_session":
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    location_manager.save_location(req.lat, req.lon, req.label)
+    success, msg = location_manager.push_location_telegram(req.lat, req.lon, req.label)
+    if success:
+        return {"status": "success", "message": msg}
+    return {"status": "error", "message": msg}
 
 if __name__ == "__main__":
     import uvicorn

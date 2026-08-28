@@ -72,6 +72,16 @@ def send_boot_notification(token, chat_id):
             f"🕒 開機時間 :\n{boot_time}"
         )
         
+        try:
+            import location_manager
+            loc = location_manager.get_location()
+            if loc and loc.get('lat') and loc.get('lon'):
+                label = loc.get('label', '')
+                label_str = f" - {label}" if label else ""
+                message += f"\n\n📍 設備定位{label_str}:\nhttps://www.google.com/maps?q={loc['lat']},{loc['lon']}"
+        except Exception:
+            pass
+        
         send_telegram_message(token, chat_id, message)
     except Exception as e:
         print(f"Failed to build boot notification: {e}")

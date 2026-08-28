@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>系統設定 - 智慧管理平台</title>
     <link rel="stylesheet" href="/static/styles.css?v=2">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
         .settings-section {
@@ -91,6 +93,14 @@
                     <div class="card tab-card" :class="{ active: activeTab === 'tailscale' }" @click="activeTab = 'tailscale'">
                         <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent-color);">🌐 遠端連線 (Tailscale)</h3>
                         <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">虛擬區域網路與遠端管理</p>
+                    </div>
+                    <div class="card tab-card" :class="{ active: activeTab === 'npc' }" @click="activeTab = 'npc'">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent-color);">🌐 內網穿透 (NPC)</h3>
+                        <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">配置與管理 NPC</p>
+                    </div>
+                    <div class="card tab-card" :class="{ active: activeTab === 'location' }" @click="activeTab = 'location'">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent-color);">📍 設備定位 (Location)</h3>
+                        <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">配置與推播設備座標</p>
                     </div>
                     <div class="card tab-card" :class="{ active: activeTab === 'raw_logs' }" @click="activeTab = 'raw_logs'">
                         <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent-color);">🗄️ RAW 數據日誌</h3>
@@ -903,6 +913,119 @@
                             </tr>
                         </tbody>
                     </table>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Location Section -->
+            <section v-show="activeTab === 'location'" class="settings-section card" style="margin-bottom: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; color: var(--accent-color);">
+                        <span>📍</span> 設備定位 (Location)
+                    </h2>
+                    <button class="btn btn-primary" @click="fetchLocationStatus" style="font-size: 0.85rem;">🔄 重新讀取定位</button>
+                </div>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">設定設備的地理座標。設定後，每次開機時將自動包含於 Telegram 通知內發送。</p>
+                
+                <div style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 8px;">
+                    <h3 style="margin-top: 0; margin-bottom: 1rem; color: var(--accent-color);">定位設定</h3>
+                    
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1; min-width: 150px;">
+                            <label>緯度 (Latitude)</label>
+                            <input type="number" step="any" v-model.number="locationConfig.lat" placeholder="例: 25.0339">
+                        </div>
+                        <div class="form-group" style="flex: 1; min-width: 150px;">
+                            <label>經度 (Longitude)</label>
+                            <input type="number" step="any" v-model.number="locationConfig.lon" placeholder="例: 121.5644">
+                        </div>
+                        <div class="form-group" style="flex: 2; min-width: 200px;">
+                            <label>標籤說明 (Label)</label>
+                            <input type="text" v-model="locationConfig.label" placeholder="例: 台北辦公室">
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">地圖輔助定位 (在地圖上點選您的實際位置，將會自動帶入座標與地名)</label>
+                        <div id="location-map" style="height: 350px; border-radius: 8px; border: 1px solid var(--border-color); z-index: 1;"></div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                            最後更新時間: {{ locationConfig.ts || '從未更新' }}
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn" style="background: #6b7280; color: white;" @click="autoGetLocation">自動抓取定位</button>
+                            <button class="btn btn-primary" @click="saveLocationConfig">儲存</button>
+                            <button class="btn" style="background: #10b981; color: white;" @click="saveAndPushLocation">儲存並推播 (Telegram)</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- NPC Section -->
+            <section v-show="activeTab === 'npc'" class="settings-section card" style="margin-bottom: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; color: var(--accent-color);">
+                        <span>🌐</span> 內網穿透客戶端 (NPC)
+                    </h2>
+                    <button class="btn btn-primary" @click="fetchNpcStatus" style="font-size: 0.85rem;">🔄 重新檢查狀態</button>
+                </div>
+                
+                <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <div>
+                            <span style="font-size: 1.1rem; font-weight: bold;">目前狀態：</span>
+                            <span :style="{ color: npcStatus.active ? '#4ade80' : (npcStatus.installed ? '#f59e0b' : '#ef4444'), fontWeight: 'bold' }">
+                                {{ npcStatus.installed ? (npcStatus.active ? '執行中' : '已安裝，已停止') : '未安裝' }}
+                            </span>
+                        </div>
+                        <div v-if="!npcStatus.installed" style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-primary" @click="downloadNpc">自動下載 NPC</button>
+                            <label class="btn" style="background: #3b82f6; color: white; cursor: pointer; margin: 0; display: inline-block; padding: 0.4rem 1rem;">
+                                手動上傳
+                                <input type="file" @change="uploadNpc" style="display: none;">
+                            </label>
+                        </div>
+                        <div v-else style="display: flex; gap: 0.5rem;">
+                            <button class="btn" @click="controlNpc('start')" v-if="!npcStatus.active" style="background: #10b981; color: white;">啟動</button>
+                            <button class="btn" @click="controlNpc('stop')" v-if="npcStatus.active" style="background: #ef4444; color: white;">停止</button>
+                            <button class="btn" @click="controlNpc('restart')" v-if="npcStatus.active" style="background: #f59e0b; color: white;">重新啟動</button>
+                            <button class="btn btn-danger" @click="uninstallNpc">移除服務</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="npcStatus.installed" style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 8px;">
+                    <h3 style="margin-top: 0; margin-bottom: 1rem; color: var(--accent-color);">安裝與連線設定</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                        請貼上官方提供的安裝指令，系統會自動解析出設定參數。
+                    </p>
+                    
+                    <div class="form-group">
+                        <label>官方安裝指令</label>
+                        <textarea v-model="npcRawCommand" rows="3" placeholder="例如: npc install -server=... -vkey=... -type=tcp" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid var(--border-color); padding: 0.5rem; font-family: monospace;"></textarea>
+                        <button class="btn btn-primary" @click="parseNpcCommand" style="margin-top: 0.5rem;">自動解析</button>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
+                        <div class="form-group" style="flex: 1; min-width: 200px;">
+                            <label>Server (伺服器位址)</label>
+                            <input type="text" v-model="npcConfig.server">
+                        </div>
+                        <div class="form-group" style="flex: 1; min-width: 200px;">
+                            <label>Vkey (連線金鑰)</label>
+                            <input type="text" v-model="npcConfig.vkey">
+                        </div>
+                        <div class="form-group" style="flex: 1; min-width: 100px;">
+                            <label>Type (類型)</label>
+                            <input type="text" v-model="npcConfig.type">
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: right; margin-top: 1rem;">
+                        <button class="btn btn-primary" @click="installNpc">儲存並安裝服務</button>
+                    </div>
                 </div>
             </section>
 
@@ -939,7 +1062,7 @@
     </div>
 
     <script>
-        const { createApp, ref, onMounted } = Vue;
+        const { createApp, ref, onMounted, watch, nextTick } = Vue;
 
         createApp({
             setup() {
@@ -948,6 +1071,10 @@
                 const sysSettings = ref({});
                 const groups = ref([]);
                 const commandsList = ref([]);
+                const npcStatus = ref({});
+                const npcRawCommand = ref('');
+                const npcConfig = ref({ server: '', vkey: '', type: 'tcp' });
+                const locationConfig = ref({ lat: null, lon: null, label: '', ts: null });
                 const setupCommandsList = ref([]);
                 const setupCommandExec = ref({ slave_id: 1, selected_cmd_id: 'null', command: '', register_address: 0, write_value: '', write_value_dec: '', read_count: 1 });
                 const execModal = ref({ show: false, success: false, message: '' });
@@ -1636,6 +1763,253 @@
                     }
                 };
 
+                const fetchNpcStatus = async () => {
+                    try {
+                        const res = await fetch('/api/npc/status');
+                        const data = await res.json();
+                        npcStatus.value = data;
+                        if (data.server) npcConfig.value.server = data.server;
+                        if (data.vkey) npcConfig.value.vkey = data.vkey;
+                        if (data.type) npcConfig.value.type = data.type;
+                    } catch (e) { console.error(e); }
+                };
+
+                const parseNpcCommand = async () => {
+                    try {
+                        const res = await fetch('/api/npc/parse', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ command_text: npcRawCommand.value })
+                        });
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            npcConfig.value = data.data;
+                            alert('解析成功');
+                        } else {
+                            alert(data.message);
+                        }
+                    } catch (e) { alert(e.message); }
+                };
+
+                const installNpc = async () => {
+                    if(!npcConfig.value.server || !npcConfig.value.vkey) return alert('請填寫完整資訊');
+                    try {
+                        const res = await fetch('/api/npc/install', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(npcConfig.value)
+                        });
+                        const data = await res.json();
+                        alert(data.message);
+                        fetchNpcStatus();
+                    } catch(e) { alert(e.message); }
+                };
+
+                const controlNpc = async (action) => {
+                    try {
+                        const res = await fetch('/api/npc/control', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action })
+                        });
+                        const data = await res.json();
+                        alert(data.message);
+                        fetchNpcStatus();
+                    } catch(e) { alert(e.message); }
+                };
+
+                const uninstallNpc = async () => {
+                    if(!confirm('確定要移除 NPC 服務嗎？')) return;
+                    try {
+                        const res = await fetch('/api/npc/uninstall', { method: 'POST' });
+                        const data = await res.json();
+                        alert(data.message);
+                        fetchNpcStatus();
+                    } catch(e) { alert(e.message); }
+                };
+
+                const downloadNpc = async () => {
+                    try {
+                        alert('開始下載，這可能需要幾十秒，請耐心等待...');
+                        const res = await fetch('/api/npc/download', { method: 'POST' });
+                        const data = await res.json();
+                        alert(data.message);
+                        fetchNpcStatus();
+                    } catch(e) { alert(e.message); }
+                };
+
+                const uploadNpc = async (event) => {
+                    const file = event.target.files[0];
+                    if(!file) return;
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    try {
+                        alert('上傳中...');
+                        const res = await fetch('/api/npc/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await res.json();
+                        alert(data.message);
+                        fetchNpcStatus();
+                    } catch (e) { alert(e.message); }
+                    event.target.value = '';
+                };
+                
+                const fetchLocationStatus = async () => {
+                    try {
+                        const res = await fetch('/api/location');
+                        const data = await res.json();
+                        locationConfig.value = data;
+                    } catch (e) { console.error(e); }
+                };
+
+                const saveLocationConfig = async () => {
+                    try {
+                        const res = await fetch('/api/location', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(locationConfig.value)
+                        });
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            alert('儲存成功');
+                            fetchLocationStatus();
+                        } else {
+                            alert('儲存失敗: ' + data.message);
+                        }
+                    } catch(e) { alert(e.message); }
+                };
+
+                const saveAndPushLocation = async () => {
+                    try {
+                        const res = await fetch('/api/location/push', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(locationConfig.value)
+                        });
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            alert('推播成功: ' + data.message);
+                            fetchLocationStatus();
+                        } else {
+                            alert('推播失敗: ' + data.message);
+                        }
+                    } catch(e) { alert(e.message); }
+                };
+
+                const autoGetLocation = () => {
+                    const fallbackToIpGeo = async () => {
+                        try {
+                            const res = await fetch('http://ip-api.com/json/');
+                            const data = await res.json();
+                            if (data.status === 'success') {
+                                locationConfig.value.lat = data.lat;
+                                locationConfig.value.lon = data.lon;
+                                if (!locationConfig.value.label) {
+                                    locationConfig.value.label = `${data.city} (IP自動定位)`;
+                                }
+                                alert(`已透過 IP 概略定位取得座標 (精確度較低): ${data.city}`);
+                                updateMapMarker();
+                            } else {
+                                alert("無法取得定位: IP 定位服務失敗");
+                            }
+                        } catch (e) {
+                            alert("無法取得定位: 且 IP 定位服務無法連線");
+                        }
+                    };
+
+                    if ("geolocation" in navigator) {
+                        navigator.geolocation.getCurrentPosition(
+                            async (position) => {
+                                locationConfig.value.lat = position.coords.latitude;
+                                locationConfig.value.lon = position.coords.longitude;
+                                updateMapMarker();
+                                
+                                if (!locationConfig.value.label) {
+                                    try {
+                                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${position.coords.latitude}&lon=${position.coords.longitude}&format=json`);
+                                        const data = await res.json();
+                                        if (data && data.address) {
+                                            const addr = data.address;
+                                            locationConfig.value.label = addr.city || addr.town || addr.village || addr.county || '已自動取得定位';
+                                        }
+                                    } catch (e) {
+                                        console.warn("Reverse geocoding failed", e);
+                                        locationConfig.value.label = '已自動取得定位';
+                                    }
+                                }
+                            },
+                            (error) => {
+                                console.warn("Geolocation API error:", error.message);
+                                fallbackToIpGeo();
+                            },
+                            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                        );
+                    } else {
+                        fallbackToIpGeo();
+                    }
+                };
+                
+                let mapInstance = null;
+                let markerInstance = null;
+
+                const initMap = () => {
+                    if (mapInstance) return;
+                    mapInstance = L.map('location-map').setView([23.6978, 120.9605], 7);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors'
+                    }).addTo(mapInstance);
+
+                    if (locationConfig.value.lat && locationConfig.value.lon) {
+                        updateMapMarker();
+                    }
+
+                    mapInstance.on('click', async (e) => {
+                        const lat = e.latlng.lat;
+                        const lon = e.latlng.lng;
+                        locationConfig.value.lat = parseFloat(lat.toFixed(6));
+                        locationConfig.value.lon = parseFloat(lon.toFixed(6));
+                        
+                        if (markerInstance) {
+                            markerInstance.setLatLng(e.latlng);
+                        } else {
+                            markerInstance = L.marker(e.latlng).addTo(mapInstance);
+                        }
+
+                        try {
+                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+                            const data = await res.json();
+                            if (data && data.address) {
+                                const addr = data.address;
+                                locationConfig.value.label = addr.city || addr.town || addr.village || addr.county || '自訂定位';
+                            }
+                        } catch(err) { console.error(err); }
+                    });
+                };
+                
+                const updateMapMarker = () => {
+                    if (!mapInstance || !locationConfig.value.lat || !locationConfig.value.lon) return;
+                    const latlng = [locationConfig.value.lat, locationConfig.value.lon];
+                    if (markerInstance) {
+                        markerInstance.setLatLng(latlng);
+                    } else {
+                        markerInstance = L.marker(latlng).addTo(mapInstance);
+                    }
+                    mapInstance.setView(latlng, 13);
+                };
+
+                watch(activeTab, async (newTab) => {
+                    if (newTab === 'location') {
+                        await nextTick();
+                        initMap();
+                        if (mapInstance) {
+                            mapInstance.invalidateSize();
+                            updateMapMarker();
+                        }
+                    }
+                });
+
                 onMounted(async () => {
                     await fetchSysSettings();
                     await fetchCommands();
@@ -1647,6 +2021,8 @@
                     await fetchConfigs();
                     await fetchTailscaleStatus();
                     await fetchRawLogs();
+                    await fetchNpcStatus();
+                    await fetchLocationStatus();
                     loading.value = false;
                 });
 
@@ -1769,7 +2145,10 @@
                     uninstallTailscale,
                     tailscaleUp,
                     tailscaleDown,
-                    rawLogs, fetchRawLogs, logViewModal, viewRawLog, formatBytes
+                    rawLogs, fetchRawLogs, logViewModal, viewRawLog, formatBytes,
+                    fetchNpcStatus, parseNpcCommand, installNpc, controlNpc, uninstallNpc, downloadNpc, uploadNpc,
+                    npcStatus, npcRawCommand, npcConfig,
+                    fetchLocationStatus, saveLocationConfig, saveAndPushLocation, autoGetLocation, locationConfig
                 };
             }
         }).mount('#app');

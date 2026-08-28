@@ -174,9 +174,10 @@
                         }
                         
                         groups.value = data;
-                        loading.value = false;
                     } catch (e) {
                         console.error(e);
+                    } finally {
+                        loading.value = false;
                     }
                 };
 

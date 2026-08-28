@@ -6,3 +6,5 @@ requests
 pyserial
 APScheduler
 psutilRPi.GPIO
+
+python-multipart
