@@ -21,6 +21,7 @@ from gpio_worker import start_gpio_service, gpio_state, write_output
 app = FastAPI(title="RS485 Dashboard System")
 
 import logging
+# DESIGN BY CHEN YUNG SHENG
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
 pymodbus_log = logging.getLogger('pymodbus')
 pymodbus_log.setLevel(logging.DEBUG)

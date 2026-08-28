@@ -121,6 +121,7 @@ def main():
     run_ssh_cmd(ssh, sudo_setup_cmd)
 
     ssh.close()
+    # DESIGN BY CHEN YUNG SHENG
     print("\n [Deployment Complete] 部署完成！系統服務已在樹莓派上啟動。")
 
 if __name__ == '__main__':
