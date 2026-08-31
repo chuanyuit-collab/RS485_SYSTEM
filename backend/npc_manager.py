@@ -28,7 +28,7 @@ def save_config(server, vkey, type_):
 
 def run(cmd):
     try:
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
         return res.returncode, res.stdout, res.stderr
     except Exception as e:
         return -1, "", str(e)
@@ -118,12 +118,12 @@ def download_npc():
     if "aarch64" in arch or "arm64" in arch:
         url = "https://github.com/ehang-io/nps/releases/download/v0.26.10/linux_arm64_client.tar.gz"
     elif "arm" in arch:
-        url = "https://github.com/ehang-io/nps/releases/download/v0.26.10/linux_arm_client.tar.gz"
+        url = "https://github.com/ehang-io/nps/releases/download/v0.26.10/linux_arm_v7_client.tar.gz"
     elif "x86_64" in arch or "amd64" in arch:
         url = "https://github.com/ehang-io/nps/releases/download/v0.26.10/linux_amd64_client.tar.gz"
     else:
         # fallback to arm for pi
-        url = "https://github.com/ehang-io/nps/releases/download/v0.26.10/linux_arm_client.tar.gz"
+        url = "https://github.com/ehang-io/nps/releases/download/v0.26.10/linux_arm_v7_client.tar.gz"
         
     tmp_tar = "/tmp/npc_client.tar.gz"
     try:
