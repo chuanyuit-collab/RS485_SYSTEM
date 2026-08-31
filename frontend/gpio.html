@@ -86,88 +86,104 @@
             font-weight: 500;
         }
 
-        /* LED Indicator */
+        /* LED Indicator (Digital Inputs) */
         .led {
             width: 24px;
             height: 24px;
             border-radius: 50%;
-            background-color: var(--led-off);
+            background-color: #000;
             box-shadow: 
-                inset 0 2px 4px rgba(0,0,0,0.6),
-                inset 0 -1px 2px rgba(255,255,255,0.2),
+                inset 0 2px 4px rgba(255,255,255,0.1),
                 0 0 0 2px #111;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .led::after {
+            content: 'OFF';
+            position: absolute;
+            top: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            color: #555;
+            font-weight: 700;
+            transition: all 0.3s ease;
         }
 
         .led.on {
             background-color: var(--led-on-green);
             box-shadow: 
                 inset 0 1px 2px rgba(255,255,255,0.4),
-                0 0 10px var(--led-on-green),
-                0 0 20px var(--led-on-green);
+                0 0 15px var(--led-on-green),
+                0 0 0 2px #111;
+        }
+        
+        .led.on::after {
+            content: 'ON';
+            color: var(--led-on-green);
+            text-shadow: 0 0 5px var(--led-on-green);
         }
 
-        /* Heavy Toggle Switch */
+        /* Modern Pill Toggle Switch (Relay Outputs) */
         .toggle-switch {
             position: relative;
-            width: 60px;
-            height: 100px;
-            background: #222;
-            border-radius: 8px;
-            border: 2px solid #111;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
+            width: 76px;
+            height: 38px;
+            background: #000;
+            border-radius: 19px;
+            border: 2px solid #222;
             cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px; /* Space for labels if any */
         }
 
         .toggle-switch::before {
-            content: 'ON';
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.7rem;
-            font-weight: bold;
-            color: #555;
-        }
-        
-        .toggle-switch::after {
             content: 'OFF';
             position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.7rem;
-            font-weight: bold;
+            right: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
             color: #555;
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .toggle-switch.active {
+            background: rgba(0, 255, 65, 0.1);
+            border-color: rgba(0, 255, 65, 0.5);
+            box-shadow: inset 0 0 10px rgba(0, 255, 65, 0.2);
+        }
+
+        .toggle-switch.active::before {
+            content: 'ON';
+            left: 12px;
+            right: auto;
+            color: var(--led-on-green);
+            text-shadow: 0 0 8px var(--led-on-green);
         }
 
         .toggle-handle {
             position: absolute;
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(to bottom, #d4d4d4, #888);
-            border-radius: 5px;
-            left: 8px;
-            bottom: 8px; /* OFF position */
-            box-shadow: 
-                0 -2px 5px rgba(255,255,255,0.5) inset,
-                0 5px 10px rgba(0,0,0,0.8);
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            border-bottom: 4px solid #555;
+            width: 28px;
+            height: 28px;
+            background: #444;
+            border-radius: 50%;
+            left: 4px;
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.8), inset 0 1px 2px rgba(255,255,255,0.2);
         }
 
         .toggle-switch.active .toggle-handle {
-            bottom: 48px; /* ON position */
-            background: linear-gradient(to bottom, #fff, #aaa);
-            border-bottom: none;
-            border-top: 4px solid #555;
+            left: calc(100% - 32px);
+            background: var(--led-on-green);
             box-shadow: 
-                0 2px 5px rgba(255,255,255,0.5) inset,
-                0 -5px 10px rgba(0,0,0,0.8);
+                0 0 15px var(--led-on-green),
+                inset 0 1px 2px rgba(255,255,255,0.6);
         }
-
-        .toggle-switch.active::before { color: var(--led-on-green); text-shadow: 0 0 5px var(--led-on-green); }
-        .toggle-switch:not(.active)::after { color: #000000; font-weight: 900; text-shadow: none; }
 
         .back-link {
             display: inline-block;
