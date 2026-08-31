@@ -59,18 +59,31 @@ def send_boot_notification(token, chat_id):
         # Boot time
         boot_time = datetime.datetime.fromtimestamp(psutil.boot_time()).strftime("%Y-%m-%d %H:%M:%S")
 
+        # Get Tailscale IP
+        try:
+            import subprocess
+            ts_ip = subprocess.check_output(['tailscale', 'ip', '-4'], text=True, stderr=subprocess.DEVNULL).strip()
+        except:
+            ts_ip = "無/未連線"
+
         message = (
             "🟢 設備開機通知\n\n"
             f"📦 設備名稱 : {hostname}\n"
             f"👤 SSH User : {user}\n"
             f"🌐 內網IP : {internal_ip}\n"
             f"🌍 外網IP : {external_ip}\n"
+            f"🛡️ Tailscale IP : {ts_ip}\n"
             f"🏷️ MAC : {mac}\n\n"
             f"🌡️ CPU溫度 : {cpu_temp}\n"
             f"💾 RAM使用率 : {ram}%\n"
             f"💿 DISK使用率 : {disk}%\n\n"
-            f"🕒 開機時間 :\n{boot_time}"
+            f"🕒 開機時間 :\n{boot_time}\n\n"
+            "🔗 快速連線連結:\n"
+            f"👉 內網連線 : http://{internal_ip}:8000\n"
+            f"👉 外網連線 : http://{external_ip}:8000\n"
         )
+        if ts_ip != "無/未連線":
+            message += f"👉 Tailscale連線 : http://{ts_ip}:8000\n"
         
         try:
             import location_manager
