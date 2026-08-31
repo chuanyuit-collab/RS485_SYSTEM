@@ -240,6 +240,32 @@
             </div>
         </div>
 
+        <div style="max-width: 1200px; margin: 2rem auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px;">
+            <h3 style="margin-top: 0; color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">📡 MQTT 遠端整合說明</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+                本系統已內建 MQTT 控制功能（需先至「系統設定」開啟 MQTT 並設定伺服器）。<br>
+                您可以透過以下 Topic 格式，將此設備的 GPIO 整合至 Home Assistant、Node-RED 或其他中控系統：
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 15px;">
+                <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
+                    <h4 style="margin: 0 0 10px 0; color: var(--success-color);">讀取 GPIO 狀態 (Subscribe)</h4>
+                    <ul style="color: var(--text-primary); font-size: 0.9rem; margin: 0; padding-left: 20px; line-height: 1.6;">
+                        <li><strong>Topic:</strong> <code>rs485_sys/gpio/status</code><br>或 <code>[MAC位址]/STATUS</code></li>
+                        <li><strong>Payload:</strong> JSON 格式字串</li>
+                        <li><strong>說明:</strong> 當狀態改變或每 5 秒會自動發布包含所有 Inputs 與 Outputs 狀態的 JSON。</li>
+                    </ul>
+                </div>
+                <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
+                    <h4 style="margin: 0 0 10px 0; color: var(--danger-color);">控制 GPIO 開關 (Publish)</h4>
+                    <ul style="color: var(--text-primary); font-size: 0.9rem; margin: 0; padding-left: 20px; line-height: 1.6;">
+                        <li><strong>Topic:</strong> <code>rs485_sys/gpio/set/&lt;腳位&gt;</code><br>或 <code>[MAC位址]/CTRL/&lt;腳位&gt;</code></li>
+                        <li><strong>範例:</strong> <code>rs485_sys/gpio/set/26</code></li>
+                        <li><strong>Payload:</strong> <code>1</code> 或 <code>0</code> (也支援 <code>on</code>/<code>off</code>)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
         <div class="status-bar">
             <span class="status-indicator" :class="{ offline: !connected }"></span>
             {{ connected ? 'System Online (Live Data)' : 'System Offline - Attempting Reconnect...' }}
