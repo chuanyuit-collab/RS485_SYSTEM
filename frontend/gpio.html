@@ -11,7 +11,7 @@
         :root {
             --panel-bg: linear-gradient(145deg, #1f2329, #1a1d22);
             --panel-border: #2c313a;
-            --led-off: #2a2a2a;
+            --led-off: #000000;
             --led-on-green: #00ff41;
             --led-on-red: #ff3333;
         }
@@ -166,8 +166,8 @@
                 0 -5px 10px rgba(0,0,0,0.8);
         }
 
-        .toggle-switch.active::before { color: var(--led-on-red); text-shadow: 0 0 5px var(--led-on-red); }
-        .toggle-switch:not(.active)::after { color: #fff; }
+        .toggle-switch.active::before { color: var(--led-on-green); text-shadow: 0 0 5px var(--led-on-green); }
+        .toggle-switch:not(.active)::after { color: #000000; font-weight: 900; text-shadow: none; }
 
         .back-link {
             display: inline-block;
